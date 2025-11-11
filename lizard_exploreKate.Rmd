@@ -1,0 +1,286 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+
+```{r}
+library(FactoMineR) # For PCA
+library(factoextra) # For PCA plots
+library(tidyverse)
+library(corrplot)
+
+library(vegan) # For CCA
+library(GGally)
+library(ggplot2)
+```
+
+
+```{r}
+setwd("~/Sync_Docs/AgroParisTech/MathTools")
+
+liz = read.csv("lizard.csv", header=T)
+
+head(liz)
+
+```
+
+
+
+
+```{r}
+liz.var = liz %>% select (-c(SD.Female.adult.weight..g., Sample.Size.Female.adult.weight, SD.F.SVL.adults..mm., Sample.size.Mean.F.SVL.adults, Sample.size.Clutch.Size., Source ))
+
+#remove nas, but so small shouldn't use just
+liz.var = na.omit(liz.var)
+
+head(liz.var)
+
+
+```
+
+```{r}
+liz.scaled <- liz.var %>% 
+  select_if(is.numeric) %>% #Only numeric columns are selected
+  mutate_all(.funs = scale) 
+```
+
+
+#corrplot
+```{r}
+#must remove nas
+liz.scaled %>% # In data_soils
+  select_if(is.numeric) %>% # Select only numeric columns
+  cor() %>% # Calculate the empirical correlation matrix
+  corrplot() # Then graph this matrix
+```
+
+```{r}
+liz.var =select(liz.var, - Mode.of.reproduction )
+ggpairs(liz.var, columns = 7:14)
+```
+
+
+
+#pca
+```{r}
+result_pca <- PCA(liz.scaled, 
+               scale.unit = TRUE, # Option to center and scale data (useless here)
+               ncp = 18, # Number of components to keep (here, all) 18 is max for this dataset
+               graph = T)
+
+fviz_pca_var(result_pca,
+             axes = c(1, 2), col.var="cos2") # Number of axes to represent 
+fviz_pca_var(result_pca,
+             axes = c(1, 3), col.var="cos2")
+fviz_pca_biplot(result_pca, axes = c(1,2), col.ind=liz.var$Prefered.Habitat.Type)
+fviz_pca_biplot(result_pca, axes = c(1,2), col.ind=liz.var$Distribution)
+fviz_pca_biplot(result_pca, axes = c(1,2), col.ind=liz.var$Foraging.Mode)
+fviz_pca_biplot(result_pca, axes = c(1,2), col.ind=liz.var$Mode.of.reproduction)
+
+fviz_pca_biplot(result_pca, axes = c(1,3), col.ind=liz.var$Prefered.Habitat.Type)
+fviz_pca_biplot(result_pca, axes = c(1,3), col.ind=liz.var$Distribution)
+fviz_pca_biplot(result_pca, axes = c(1,3), col.ind=liz.var$Foraging.Mode)
+fviz_pca_biplot(result_pca, axes = c(1,3), col.ind=liz.var$Mode.of.reproduction)
+
+```
+
+
+#explore plots
+```{r}
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Mean.F.SVL.adults..mm., color= Foraging.Mode))+
+  geom_point()
+  
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Mean.Clutch.Size, color= Foraging.Mode))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Clutch.Frequency, color= Foraging.Mode))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=RCM, color= Foraging.Mode))+
+  geom_point()
+ggplot(liz.var, aes(x=RCM, y=Mean.Clutch.Size, color= Foraging.Mode))+
+  geom_point()
+
+```
+
+```{r}
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Mean.F.SVL.adults..mm., color= Prefered.Habitat.Type))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Mean.Clutch.Size, color= Prefered.Habitat.Type))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Clutch.Frequency, color= Prefered.Habitat.Type))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=RCM, color= Prefered.Habitat.Type))+
+  geom_point()
+ggplot(liz.var, aes(x=RCM, y=Mean.Clutch.Size, color= Prefered.Habitat.Type))+
+  geom_point()
+
+```
+
+
+
+```{r}
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Mean.F.SVL.adults..mm., color= Mode.of.reproduction))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Mean.Clutch.Size, color= Mode.of.reproduction))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Clutch.Frequency, color= Mode.of.reproduction))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=RCM, color= Mode.of.reproduction))+
+  geom_point()
+ggplot(liz.var, aes(x=RCM, y=Mean.Clutch.Size, color= Mode.of.reproduction))+
+  geom_point()
+
+```
+
+
+```{r}
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Mean.F.SVL.adults..mm., color= Distribution))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Mean.Clutch.Size, color= Distribution))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Clutch.Frequency, color= Distribution))+
+  geom_point()
+ggplot(liz.var, aes(x=Mean.F.SVL.adults..mm., y=RCM, color= Distribution))+
+  geom_point()
+ggplot(liz.var, aes(x=RCM, y=Mean.Clutch.Size, color= Distribution))+
+  geom_point()
+
+```
+
+```{r}
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Mean.F.SVL.adults..mm., color= Mode.of.reproduction))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Mean.Clutch.Size, color= Mode.of.reproduction))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=Clutch.Frequency, color= Mode.of.reproduction))+
+  geom_point()
+ggplot(liz.var, aes(x=Average.Female.adult.weight..g., y=RCM, color= Mode.of.reproduction))+
+  geom_point()
+ggplot(liz.var, aes(x=RCM, y=Mean.Clutch.Size, color= Mode.of.reproduction))+
+  geom_point()
+
+```
+
+
+```{r}
+ggplot(liz.var, aes(x=abs(Latitude), y=Mean.F.SVL.adults..mm., color= Distribution))+
+  geom_point()
+ggplot(liz.var, aes(x=abs(Latitude), y=Mean.Clutch.Size, color= Distribution))+
+  geom_point()
+ggplot(liz.var, aes(x=abs(Latitude), y=RCM, color= Distribution))+
+  geom_point()
+ggplot(liz.var, aes(x=abs(Latitude), y=Average.Female.adult.weight..g., color= Distribution))+
+  geom_point()+
+  ylim(0,100)
+
+```
+
+
+
+#CCA
+correspondence between habitat type and foraging mode
+have to make abundance table
+```{r}
+liz.2var = select(liz.var, c(Prefered.Habitat.Type, Foraging.Mode))
+
+liz.2var %>%  
+  as.matrix() %>% # Data is first transformed into a matrix
+  image()
+```
+
+#clustering 
+kmeans
+```{r}
+liz.3var = liz.scaled %>% select(Average.Female.adult.weight..g., Mean.F.SVL.adults..mm., RCM, Clutch.Frequency )%>%
+  na.omit()
+
+kmeans_4groups <- liz.3var %>% 
+  select_if(is.numeric) %>% # We only keep numerical columns for kmeans!
+  kmeans(centers = 4, nstart = 50 ) 
+
+
+```
+
+```{r}
+clusters_4groups <- kmeans_4groups$cluster
+
+traits_kmeans <- liz.3var %>% 
+  mutate(kmeans_4 = factor(clusters_4groups))
+
+traits_kmeans %>% 
+  group_by(kmeans_4) %>% 
+  # For each group, we count the number of lines
+  count()
+# Average and standard deviation
+traits_kmeans %>% 
+  group_by(kmeans_4) %>% 
+  # For each group, summarise the numerical columns
+  # by calculating a list of functions, in this case the mean and standard deviation
+  summarise_if(is.numeric, .funs = list(Mean = mean, 
+                                        Standard_deviation = sd))
+
+traits_kmeans %>% 
+  ggplot(aes(x = kmeans_4, y = Average.Female.adult.weight..g.)) + 
+  geom_boxplot() + 
+  labs(x = "Cluster")
+traits_kmeans %>% 
+  ggplot(aes(x = kmeans_4, y = Mean.F.SVL.adults..mm.)) + 
+  geom_boxplot() + 
+  labs(x = "Cluster")
+traits_kmeans %>% 
+  ggplot(aes(x = kmeans_4, y = Clutch.Frequency)) + 
+  geom_boxplot() + 
+  labs(x = "Cluster")
+traits_kmeans %>% 
+  ggplot(aes(x = kmeans_4, y = RCM)) + 
+  geom_boxplot() + 
+  labs(x = "Cluster")
+
+ggpairs(liz.clust, 
+                mapping = aes(color = kmeans_4),
+                columns = 1:4)
+```
+
+
+
+Is foraging mode and habitat type related?
+How does habitat type effect weight?
+
+Is there a clustering of life history strategies? What characterizes them?
+Can we use lizard weight to predict y?
+
+How do lizard life history traits differ on latitude gradient?
+Can use latitude and body weight and habitat to predict svl maturity and svl offspring?
+
+cat
+-genus
+- family
+- reproductive mode
+- foraging mode
+* distribution
+- habitat type
+
+
+numerical
+*- longitude
+- latitude
+- weight mean
+- svl mean
+* maturity size/svl
+- offspring svl/size
+- clutch size
+* clutch per year - sparse data
+* clutch freq (just 1 or 2 categorical)
+- rcm egg ratio
+
+
+
+
+
+
+
+
