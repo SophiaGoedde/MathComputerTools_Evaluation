@@ -1,0 +1,41 @@
+---
+title: "ComputerTools_Evaluation"
+author: "Sophia Gödde"
+format: html
+editor: visual
+---
+
+## Introduction
+
+Idea is to do KNN and random forest to predict if latitude and SVL mean to predict foraging mode / or habitat type?!
+
+1 variable numerical
+
+2 variable numerical
+
+predict: categorical
+
+H1: Higher latitude -\> less movement
+
+H2: Higher latitude -\> smaller size too
+
+H3: Bigger size -\> less movement
+
+Different habitat types
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
