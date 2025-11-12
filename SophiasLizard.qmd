@@ -7,7 +7,9 @@ editor: visual
 
 ## Introduction
 
-Idea is to do KNN and random forest to predict if latitude and SVL mean to predict foraging mode / or habitat type?!
+Methods to compare Sophia: KNN and random forest
+
+Question: predict if latitude and SVL mean to predict habitat type / foraging mode ?!
 
 1 variable numerical
 
@@ -21,21 +23,154 @@ H2: Higher latitude -\> smaller size too
 
 H3: Bigger size -\> less movement
 
-Different habitat types
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+Get different habitat types for description
 
 ```{r}
-1 + 1
+unique(lizard$Habitat_type)
+
 ```
 
-You can add options to executable code like this
+## Method 
+
+Loading packages
 
 ```{r}
-#| echo: false
-2 * 2
+library(tidyverse) 
+library(corrplot) # For correlation plots
+library(FactoMineR) # For PCA
+library(factoextra) # For PCA plots
+library(vegan) # For CCA
+library(GGally) #for multiple scatterplots (function ggpairs)
+library(rsample) # For sampling of data (split, analysis,..)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(caret)
+``
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+Read in data, have a first look, clean and remove NA:
+
+```{r}
+lizard <- read_csv("lizard.csv")
+
+glimpse(lizard)
+
+lizard_clean <- lizard %>%
+  select(Latitude, MeanFSVL, Habitat_Type) %>%
+  na.omit(lizard_clean)
+
+summary(lizard_clean)
+
+```
+
+some descriptive stats
+
+```{r}
+# Take a look at the first few rows
+head(lizard_clean)
+
+# See structure and variable types
+str(lizard_clean)
+
+# Get an overview of missing values, variable types, and basic stats
+summary(lizard_clean)
+
+
+describe(lizard_clean)
+
+
+# Mean and SD per habitat type
+lizard_clean %>%
+  group_by(Habitat_type) %>%
+  summarise(
+    mean_lat = mean(Latitude, na.rm = TRUE),
+    sd_lat = sd(Latitude, na.rm = TRUE),
+    mean_svl = mean(SVL_mean, na.rm = TRUE),
+    sd_svl = sd(SVL_mean, na.rm = TRUE),
+    n = n()
+  )
+
+```
+
+boxplots for each variable and habitat type
+
+```{r}
+boxplot(SVL_mean ~ Habitat_type, data = lizard_clean,
+        main = "SVL Mean by Habitat Type", xlab = "Habitat Type", ylab = "SVL Mean")
+boxplot(Latitude ~ Habitat_type, data = lizard_clean,
+        main = "Latitude by Habitat Type", xlab = "Habitat Type", ylab = "Latitude")
+
+```
+
+predictors numeric and outcome factor
+
+```{r}
+lizard_clean$Habitat_type <- as.factor(lizard_clean$Habitat_type)
+str(lizard_clean)
+
+```
+
+Split in test and train dataset
+
+```{r}
+set.seed(123) train_index <- sample(1:nrow(lizard_clean), 0.8 * nrow(lizard_clean)) train_data <- lizard_clean[train_index, ] test_data <- lizard_clean[-train_index, ]
+
+```
+
+Run KNN model - try with differnt k
+
+```{r}
+library(class)
+
+# Scale numeric predictors
+train_scaled <- scale(train_data[, c("Latitude", "SVL_mean")])
+test_scaled  <- scale(test_data[, c("Latitude", "SVL_mean")],
+                      center = attr(train_scaled, "scaled:center"),
+                      scale  = attr(train_scaled, "scaled:scale"))
+
+# Run KNN (choose k=5 as a start)
+knn_pred <- knn(train = train_scaled,
+                test = test_scaled,
+                cl = train_data$Habitat_type,
+                k = 5)
+
+# Evaluate accuracy
+mean(knn_pred == test_data$Habitat_type)
+
+```
+
+Random forest
+
+```{r}
+library(randomForest)
+
+rf_model <- randomForest(Habitat_type ~ Latitude + SVL_mean,
+                         data = train_data,
+                         importance = TRUE)
+
+rf_pred <- predict(rf_model, newdata = test_data)
+
+# Evaluate accuracy
+mean(rf_pred == test_data$Habitat_type)
+
+# Variable importance
+importance(rf_model)
+varImpPlot(rf_model)
+
+```
+
+Compare models
+
+```{r}
+table(KNN = knn_pred, Actual = test_data$Habitat_type)
+table(RF  = rf_pred,  Actual = test_data$Habitat_type)
+
+```
+
+check if higher latitude = smaller SVL –\> check if there is a correlation?!
+
+```{r}
+cor(lizard_clean$Latitude, lizard_clean$SVL_mean)
+
+```
