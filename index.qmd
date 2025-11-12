@@ -4,15 +4,17 @@ format: html
 editor: visual
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+# Introduction
 
 this is Kate testing document creation
 
 this is sophia testing
 
-## Running Code
+# Materials and Methods 
+
+Methods to compare Sophia: KNN and random forest
+
+Question: predict if latitude and SVL mean to predict foraging mode / or habitat type?!
 
 When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
 
@@ -28,3 +30,9 @@ You can add options to executable code like this
 ```
 
 The `echo: false` option disables the printing of code (only output is displayed).
+
+# Results 
+
+# Discussion 
+
+# References 
