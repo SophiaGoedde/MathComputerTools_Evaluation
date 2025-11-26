@@ -204,10 +204,8 @@ liz.2var %>%
 #clustering 
 kmeans
 ```{r}
-liz.3var = liz.scaled %>% select(Average.Female.adult.weight..g., Mean.F.SVL.adults..mm., RCM, Clutch.Frequency )%>%
-  na.omit()
 
-kmeans_4groups <- liz.3var %>% 
+kmeans_4groups <- liz.scaled %>% 
   select_if(is.numeric) %>% # We only keep numerical columns for kmeans!
   kmeans(centers = 4, nstart = 50 ) 
 
@@ -217,7 +215,7 @@ kmeans_4groups <- liz.3var %>%
 ```{r}
 clusters_4groups <- kmeans_4groups$cluster
 
-traits_kmeans <- liz.3var %>% 
+traits_kmeans1 <- liz.var %>% 
   mutate(kmeans_4 = factor(clusters_4groups))
 
 traits_kmeans %>% 
@@ -241,7 +239,11 @@ traits_kmeans %>%
   geom_boxplot() + 
   labs(x = "Cluster")
 traits_kmeans %>% 
-  ggplot(aes(x = kmeans_4, y = Clutch.Frequency)) + 
+  ggplot(aes(x = kmeans_4, y = Offspring.SVL..mm.)) + 
+  geom_boxplot() + 
+  labs(x = "Cluster")
+traits_kmeans %>% 
+  ggplot(aes(x = kmeans_4, y = Mean.Clutch.Size)) + 
   geom_boxplot() + 
   labs(x = "Cluster")
 traits_kmeans %>% 
@@ -249,11 +251,19 @@ traits_kmeans %>%
   geom_boxplot() + 
   labs(x = "Cluster")
 
-ggpairs(liz.clust, 
-                mapping = aes(color = kmeans_4),
-                columns = 1:4)
+
 ```
 
+```{r}
+traits_kmeans1 <- liz.var %>% 
+  mutate(kmeans_4 = factor(clusters_4groups))
+
+ggpairs(traits_kmeans1, 
+                mapping = aes(color = kmeans_4),
+                columns = 2:6)
+
+
+```
 
 
 Is foraging mode and habitat type linked? what is this association linked to?
@@ -267,7 +277,7 @@ Is there a clustering of life history strategies? What characterizes them?
 
 
 
-How do lizard life history traits differ on latitude gradient/ by distribution?
+***How do lizard life history traits differ on latitude gradient?***
 
 
 Can use latitude and body weight to predict svl maturity and svl offspring?
@@ -305,7 +315,7 @@ CCA
     -Is lizard habitat type and family linked, what explains? (feeding, lat, weight, svl, )
     (genus (n=138)/ family (34) to habitat)
 
-    -How do lizard life history traits differ on latitude gradient/ by distribution?
+    ***How do lizard life history traits differ on latitude gradient?***
     
 #start here    
 ##PCA , lat regression
