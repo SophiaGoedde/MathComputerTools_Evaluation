@@ -205,7 +205,7 @@ liz.2var %>%
 kmeans
 ```{r}
 
-kmeans_4groups <- liz.scaled %>% 
+kmeans_4groups <- liz.scaledLat %>% 
   select_if(is.numeric) %>% # We only keep numerical columns for kmeans!
   kmeans(centers = 4, nstart = 50 ) 
 
@@ -218,41 +218,47 @@ clusters_4groups <- kmeans_4groups$cluster
 traits_kmeans1 <- liz.var %>% 
   mutate(kmeans_4 = factor(clusters_4groups))
 
-traits_kmeans %>% 
+traits_kmeans1 %>% 
   group_by(kmeans_4) %>% 
   # For each group, we count the number of lines
   count()
 # Average and standard deviation
-traits_kmeans %>% 
+traits_kmeans1 %>% 
   group_by(kmeans_4) %>% 
   # For each group, summarise the numerical columns
   # by calculating a list of functions, in this case the mean and standard deviation
   summarise_if(is.numeric, .funs = list(Mean = mean, 
                                         Standard_deviation = sd))
 
-traits_kmeans %>% 
+traits_kmeans1 %>% 
   ggplot(aes(x = kmeans_4, y = Average.Female.adult.weight..g.)) + 
   geom_boxplot() + 
   labs(x = "Cluster")
-traits_kmeans %>% 
+traits_kmeans1 %>% 
+  ggplot(aes(x = kmeans_4, y = Latitude)) + 
+  geom_boxplot() + 
+  labs(x = "Cluster")
+traits_kmeans1 %>% 
   ggplot(aes(x = kmeans_4, y = Mean.F.SVL.adults..mm.)) + 
   geom_boxplot() + 
   labs(x = "Cluster")
-traits_kmeans %>% 
+traits_kmeans1 %>% 
   ggplot(aes(x = kmeans_4, y = Offspring.SVL..mm.)) + 
   geom_boxplot() + 
   labs(x = "Cluster")
-traits_kmeans %>% 
+traits_kmeans1 %>% 
   ggplot(aes(x = kmeans_4, y = Mean.Clutch.Size)) + 
   geom_boxplot() + 
   labs(x = "Cluster")
-traits_kmeans %>% 
+traits_kmeans1 %>% 
   ggplot(aes(x = kmeans_4, y = RCM)) + 
   geom_boxplot() + 
   labs(x = "Cluster")
 
 
 ```
+*recomend remove 3 outliers
+
 
 ```{r}
 traits_kmeans1 <- liz.var %>% 
@@ -335,13 +341,18 @@ liz.scaled <- liz.var %>%
   select (-c(Latitude)) %>% 
   select_if(is.numeric) %>% #Only numeric columns are selected
   mutate_all(.funs = scale) 
+
+liz.scaledLat <- liz.var %>% 
+  #select (-c(Latitude)) %>% 
+  select_if(is.numeric) %>% #Only numeric columns are selected
+  mutate_all(.funs = scale) 
 ```
 
 
 #corrplot
 ```{r}
 #must remove nas
-liz.scaled %>% # In data_soils
+liz.scaledLat %>% # In data_soils
   select_if(is.numeric) %>% # Select only numeric columns
   cor() %>% # Calculate the empirical correlation matrix
   corrplot() # Then graph this matrix
@@ -362,6 +373,29 @@ fviz_pca_biplot(result_pca, axes = c(1,2), col.ind=liz.var$Distribution)
 fviz_pca_biplot(result_pca, axes = c(1,2), col.ind=liz.var$Foraging.Mode)
 fviz_pca_biplot(result_pca, axes = c(1,2), col.ind=liz.var$Mode.of.reproduction)
 ```
+with lat
+```{r}
+result_pcaL <- PCA(liz.scaledLat, 
+               scale.unit = TRUE, # Option to center and scale data (useless here)
+               ncp = 18, # Number of components to keep (here, all) 18 is max for this dataset
+               graph = T)
+
+fviz_pca_var(result_pcaL,
+             axes = c(1, 2), col.var="cos2") # Number of axes to represent 
+fviz_pca_var(result_pcaL,
+             axes = c(1, 3), col.var="cos2")
+fviz_pca_biplot(result_pcaL, axes = c(1,2), col.ind=liz.var$Prefered.Habitat.Type)
+fviz_pca_biplot(result_pcaL, axes = c(1,2), col.ind=liz.var$Distribution)
+fviz_pca_biplot(result_pcaL, axes = c(1,2), col.ind=liz.var$Foraging.Mode)
+fviz_pca_biplot(result_pcaL, axes = c(1,2), col.ind=liz.var$Mode.of.reproduction)
+```
+
+Latitude gradients of lizards
+Lat and svl to predict habitat
+  any better with more variables
+
+
+
 ```{r}
 fviz_eig(result_pca, choice = "variance")
 result_pca$var$contrib
