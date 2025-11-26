@@ -21,7 +21,7 @@ library(ggplot2)
 
 
 ```{r}
-setwd("~/Sync_Docs/AgroParisTech/MathTools")
+setwd("~/R/Git/MathComputerTools_Evaluation")
 
 liz = read.csv("lizard.csv", header=T)
 
@@ -39,7 +39,7 @@ n_distinct(liz$Family)
 
 
 
-
+#remove nas
 ```{r}
 liz.var = liz %>% select (-c(SD.Female.adult.weight..g., Sample.Size.Female.adult.weight, SD.F.SVL.adults..mm., Sample.size.Mean.F.SVL.adults, Sample.size.Clutch.Size., Source ))
 
@@ -51,6 +51,7 @@ head(liz.var)
 
 ```
 
+#scale data
 ```{r}
 liz.scaled <- liz.var %>% 
   select_if(is.numeric) %>% #Only numeric columns are selected
@@ -306,7 +307,7 @@ CCA
 
     -How do lizard life history traits differ on latitude gradient/ by distribution?
     
-    
+#start here    
 ##PCA , lat regression
 ```{r}
 liz.var = liz %>% select (c(Latitude, Average.Female.adult.weight..g., Mean.F.SVL.adults..mm., Offspring.SVL..mm., Mean.Clutch.Size, RCM, Prefered.Habitat.Type,Distribution, Foraging.Mode, Mode.of.reproduction))
