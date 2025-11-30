@@ -1,0 +1,221 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+#libraries & data 
+library(FactoMineR) # For PCA
+library(factoextra) # For PCA plots
+library(tidyverse)
+library(corrplot)
+
+library(vegan) # For CCA
+library(GGally)
+library(ggplot2)
+
+
+setwd("~/R/Git/MathComputerTools_Evaluation")
+liz = read.csv("lizard.csv", header=T)
+liz = filter(liz, Species != "")
+
+```
+
+
+
+
+```{r}
+#initial dataframe exploration
+str(liz)
+
+n_distinct(liz$Prefered.Habitat.Type)
+unique(liz$Prefered.Habitat.Type)
+
+unique(liz$Family)
+n_distinct(liz$Family)
+
+liz %>%
+  group_by(Prefered.Habitat.Type) %>%
+  summarise(n=n())
+liz %>%
+  group_by(Family) %>%
+  summarise(n=n())
+```
+
+```{r}
+#data modification for exploration
+
+#remove uninterested columns
+liz.var = liz %>% select (-c(SD.Female.adult.weight..g., Sample.Size.Female.adult.weight, SD.F.SVL.adults..mm., Sample.size.Mean.F.SVL.adults, Sample.size.Clutch.Size., Source ))
+
+#remove nas, but so small shouldn't use just
+liz.var = na.omit(liz.var)
+
+liz.var$Latitude = abs(liz.var$Latitude) #latitude to all positive
+
+#scale data
+liz.scaled <- liz.var %>% 
+  select_if(is.numeric) %>% #Only numeric columns are selected
+  mutate_all(.funs = scale)
+
+```
+
+
+```{r}
+#checking for correlation of variables (in small dataset, minmized by nas)
+
+#balloon correlation matrix
+liz.scaled %>% # In data_soils
+  select_if(is.numeric) %>% # Select only numeric columns
+  cor() %>% # Calculate the empirical correlation matrix
+  corrplot() # Then graph this matrix
+
+#correlation plot
+liz.var2 =select(liz.var, - Mode.of.reproduction )
+ggpairs(liz.var2, columns = 7:14)
+
+#pca and plot
+result_pca <- PCA(liz.scaled, 
+               scale.unit = TRUE, 
+               graph = F)
+fviz_eig(result_pca, choice = "variance") ####need to choose how many dimensions look at
+result_pca$var$contrib
+
+fviz_pca_var(result_pca, axes = c(1, 2), col.var="cos2") # axes 1 &2 
+fviz_pca_var(result_pca, axes = c(1, 3), col.var="cos2") #axes 1&3
+#with population points and by habitat type
+fviz_pca_biplot(result_pca, axes = c(1,2), col.ind=liz.var$Prefered.Habitat.Type)
+
+```
+
+```{r}
+ggplot(liz, aes(x=Mean.F.SVL.adults..mm., y=Latitude, color= Prefered.Habitat.Type))+
+  geom_point()
+```
+
+
+
+
+
+```{r}
+# dataframe setup for ca &cca
+aliz=liz %>%
+  group_by(Prefered.Habitat.Type, Family) %>%
+  summarise(n=n()) %>% 
+  filter(Prefered.Habitat.Type != "")
+aliz
+
+#create matrix
+mliz = aliz %>% 
+  pivot_wider(names_from = "Prefered.Habitat.Type", values_from = n) %>% 
+  replace(is.na(.), 0) 
+
+#reduce to families with >20 observations
+countFam =liz %>% 
+  group_by(Family) %>%
+  count() %>% 
+  filter(n>20)
+Fam = countFam$Family
+
+mlizsm = mliz %>% filter(Family %in% Fam)%>% 
+  column_to_rownames("Family")
+mlizsm
+
+
+liz$Latitude = abs(liz$Latitude)
+#set Active foraging to 1 and Sit&Wait to 0; set Tropical distribution to 1 and Temperate to 0 (to calculate proportion)
+liz = liz %>% 
+  mutate(ForageActive = if_else(Foraging.Mode == "Active", 1, 0)) 
+liz = liz %>% 
+  mutate(DistTropic = if_else(Distribution == "Tropical", 1, 0)) 
+
+#variables for families
+#justify using these variables
+fam.var = liz %>%
+  filter( Family %in% Fam) %>% 
+  group_by(Family) %>%
+  summarise(n=n(), minLat= min(Latitude), maxLat = max(Latitude), pctActive= sum(ForageActive)/n(), pctTropic= sum(DistTropic)/n())
+```
+
+
+```{r}
+#correlation exploration with heatmap
+aliz %>% 
+  filter( Family %in% Fam)%>%
+  ggplot() +
+  aes(x = Prefered.Habitat.Type, y = Family, fill = n) + 
+  geom_raster() + 
+  scale_fill_viridis_c() + # Change color scale
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+#need to find how to plot or if even include
+```{r}
+#compare manually and visually plot
+average_profile <- colSums(mlizsm) / sum(mlizsm)
+average_profile
+
+counts_sols <- rowSums(mlizsm)
+counts_sols
+
+# Division by counts
+species_repartition <- (mlizsm / counts_sols) %>% 
+  rbind(Average_profile = average_profile) # Adding average profile
+species_repartition
+```
+
+
+```{r}
+#CA and plot
+result_CAsm <- CA(mlizsm, graph = T)
+fviz_eig(result_CAsm)
+
+```
+
+```{r}
+#run CCA
+CCAresult = cca(mlizsm ~ minLat + maxLat + pctActive + pctTropic, data = fam.var)
+
+#extract data
+CCAscores = scores(CCAresult)
+CCAtable = CCAresult$CCA$u
+CCAcorr = cor(CCAtable, fam.var[, c("minLat", "maxLat", "pctActive", "pctTropic")])
+
+
+CCAscores_species = as.data.frame(CCAscores$species) %>% 
+  rownames_to_column(var = "Habitat")
+CCAscores_sites = as.data.frame(CCAscores$sites) %>% 
+  rownames_to_column(var = "Family")
+CCAscores_var = as.data.frame(CCAscores$biplot) %>% 
+  mutate_all(function(x)x*ordiArrowMul(CCAscores$biplot)) %>%
+  rownames_to_column(var = "Covariable")
+
+summary(CCAresult)
+```
+
+```{r}
+#plot results
+plot(CCAresult)
+corrplot(CCAcorr)
+
+ggplot(CCAscores_sites)+
+  aes(x =CCA1, y=CCA2)+
+  geom_hline(linetype=2, yintercept = 0)+
+  geom_vline(linetype=2, xintercept = 0)+
+  #geom_point(aes(color=Family))+
+  geom_point(data=CCAscores_species, color ="red")+
+  geom_text_repel(data = CCAscores_species, aes(label = Habitat), color= "red")+
+  geom_text_repel(data = CCAscores_var, aes(label = Covariable), color="black")+
+  geom_segment(data= CCAscores_var, aes(xend = CCA1, yend = CCA2), x =0, y=0, color = "black", arrow = arrow(length = unit(0.1, "cm")))+
+  geom_point(data=CCAscores_sites, color ="blue")+
+  geom_text_repel(data = CCAscores_sites, aes(label = Family), color= "blue")+
+  theme_bw()
+```
+
+```{r}
+#statistical test
+anova(CCAresult)
+anova(CCAresult,by="margin")
+```
+

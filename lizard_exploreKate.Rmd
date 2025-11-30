@@ -17,6 +17,7 @@ library(corrplot)
 library(vegan) # For CCA
 library(GGally)
 library(ggplot2)
+library(ggrepel)
 ```
 
 
@@ -78,9 +79,8 @@ ggpairs(liz.var, columns = 7:14)
 #pca
 ```{r}
 result_pca <- PCA(liz.scaled, 
-               scale.unit = TRUE, # Option to center and scale data (useless here)
-               ncp = 18, # Number of components to keep (here, all) 18 is max for this dataset
-               graph = T)
+               scale.unit = TRUE, 
+               graph = F)
 
 fviz_pca_var(result_pca,
              axes = c(1, 2), col.var="cos2") # Number of axes to represent 
@@ -204,8 +204,9 @@ liz.2var %>%
 #clustering 
 kmeans
 ```{r}
+liz.scaled3= liz.scaled %>% select (c( Mean.F.SVL.adults..mm., Mean.Clutch.Size))
 
-kmeans_4groups <- liz.scaledLat %>% 
+kmeans_4groups <- liz.scaled3 %>% 
   select_if(is.numeric) %>% # We only keep numerical columns for kmeans!
   kmeans(centers = 4, nstart = 50 ) 
 
@@ -324,15 +325,42 @@ CCA
     ***How do lizard life history traits differ on latitude gradient?***
     
 #start here    
+```{r}
+
+
+liz$Latitude = abs(liz$Latitude)
+ggplot(liz.fam, aes(x=Mean.F.SVL.adults..mm., y=Latitude, color= Family))+
+  geom_point()
+
+ggplot(liz.fam, aes(x=Mean.F.SVL.adults..mm., y=Mean.Clutch.Size, color= Family))+
+  geom_point()
+
+countFam =liz %>% 
+  group_by(Family) %>%
+  count() %>% 
+  filter(n>20)
+Fam = countFam$Family
+liz.fam=filter(liz, Family %in% Fam)
+
+liz %>% 
+  group_by(Prefered.Habitat.Type) %>%
+  count()
+```
+
+
+
 ##PCA , lat regression
 ```{r}
-liz.var = liz %>% select (c(Latitude, Average.Female.adult.weight..g., Mean.F.SVL.adults..mm., Offspring.SVL..mm., Mean.Clutch.Size, RCM, Prefered.Habitat.Type,Distribution, Foraging.Mode, Mode.of.reproduction))
+liz.var = liz %>% select (c(Latitude, Average.Female.adult.weight..g., Mean.F.SVL.adults..mm., Offspring.SVL..mm., Mean.Clutch.Size, RCM, Family, Prefered.Habitat.Type,Distribution, Foraging.Mode, Mode.of.reproduction))
 
 liz.var = na.omit(liz.var)
+#liz.var = filter(liz.var, IndividualID == i)#remove outliers
 
 liz.var$Latitude = abs(liz.var$Latitude)
 
 head(liz.var)
+#remove outliers
+
 ```
 
     
@@ -408,26 +436,93 @@ pcavar = get_pca_ind(result_pca)
 
 liz.var.pca = cbind(liz.var, pcavar$coord)
 ```
+ 
+ 
+ 
   
   
   regression
 ```{r}
-model1 = lm(Latitude ~ Dim.1+ Dim.2, data = liz.var.pca)
-summary(model1)
+modelH = glm(Prefered.Habitat.Type ~ Dim.1, data = liz.var.pca)
+summary(modelH)
 
 #model2 = lm(Latitude ~ Dim.2, data = liz.var.pca)
 #summary(model2)
 
-ggplot(liz.var.pca, aes(x=Latitude, y = Dim.1))+
-  geom_point()+
-  geom_smooth(method = lm)
+ggplot(liz.var.pca, aes(x=Latitude, y = Dim.1, color= Family))+
+  geom_point()
+
+
+
 ggplot(liz.var.pca, aes(x=Latitude, y = Dim.2))+
   geom_point()+
   geom_smooth(method=lm)
 ```
 
   
-  
+```{r}
+pcaT = filter(liz.var.pca, Family == "Teiidae")
+pcaS = filter(liz.var.pca, Family == "Scincidae")
+
+ggplot(pcaT, aes(x=Latitude, y = Dim.2))+
+  geom_point()+
+  geom_smooth(method=lm)
+ggplot(pcaS, aes(x=Latitude, y = Dim.2))+
+  geom_point()+
+  geom_smooth(method=lm)
+```
+
+ 
+ 
+ 
+ 
+##pca arboreal vs Saxicolous
+```{r}
+liz.varSA = liz.var %>%
+  filter(Prefered.Habitat.Type == "Saxicolous" |Prefered.Habitat.Type == "Arboreal" )
+
+lizSA.scaled <- liz.varSA %>% 
+  select (-c(Latitude)) %>% 
+  select_if(is.numeric) %>% #Only numeric columns are selected
+  mutate_all(.funs = scale)
+
+#separate data set before or after PCA???
+
+
+```
+
+
+```{r}
+result_pcaSA <- PCA(lizSA.scaled, 
+               scale.unit = TRUE, # Option to center and scale data (useless here)
+               ncp = 18, # Number of components to keep (here, all) 18 is max for this dataset
+               graph = T)
+fviz_pca_biplot(result_pcaSA, axes = c(1,2), col.ind=liz.varSA$Prefered.Habitat.Type)
+
+fviz_pca_biplot(result_pcaSA, axes = c(2,3), col.ind=liz.varSA$Prefered.Habitat.Type)
+
+fviz_eig(result_pcaSA, choice = "variance")
+result_pcaSA$var$contrib
+```  
+    
+    
+    
+```{r}
+#result_pcaSA$ind$coord
+
+pcavarSA = get_pca_ind(result_pcaSA)
+
+liz.var.pcaSA = cbind(liz.varSA, pcavarSA$coord)
+```
+    
+    
+```{r}
+ggplot(liz.var.pca, aes(x=Latitude, y = Dim.1))+
+  geom_point()+
+  geom_smooth(method=lm)
+```
+    actually use original pca results then compare 2 trends
+    
     
     
 
@@ -442,9 +537,10 @@ aliz=liz %>%
 
 mliz = aliz %>% 
   pivot_wider(names_from = "Prefered.Habitat.Type", values_from = n) %>% 
-  replace(is.na(.), 0) %>% 
-  column_to_rownames("Family")
+  replace(is.na(.), 0) 
 
+mlizsm = mliz %>% filter( Family %in% Fam)%>% 
+  column_to_rownames("Family")
 #aliz <- aliz %>% mutate_at(2:9, as.integer)
 
 aliz
@@ -456,6 +552,8 @@ heat map
 mliz %>%  
   as.matrix() %>% # Data is first transformed into a matrix
   image() # Summary representation
+
+
 ```
 
 heatmap ggplot
@@ -503,13 +601,102 @@ head(liz.var)
 
 
 
-#cv
+#cv major families
 ```{r}
-result_CA <- CA(mliz, graph = FALSE)
+result_CA <- CA(mliz, graph = T)
 fviz_eig(result_CA)
 fviz_ca_biplot(result_CA, repel = TRUE)
 
+result_CAsm <- CA(mlizsm, graph = T)
+fviz_eig(result_CAsm)
+fviz_ca_biplot(result_CAsm, repel = TRUE)
 ```
+
+#data for cca
+
+```{r}
+liz$Latitude = abs(liz$Latitude)
+#set Active foraging to 1 and Sit&Wait to 0; set Tropical distribution to 1 and Temperate to 0 (to calculate proportion)
+liz = liz %>% 
+  mutate(ForageActive = if_else(Foraging.Mode == "Active", 1, 0)) 
+liz = liz %>% 
+  mutate(DistTropic = if_else(Distribution == "Tropical", 1, 0)) 
+
+#variables for families
+#justify using these variables
+fam.var = liz %>%
+  filter( Family %in% Fam) %>% 
+  group_by(Family) %>%
+  summarise(n=n(), minLat= min(Latitude), maxLat = max(Latitude), pctActive= sum(ForageActive)/n(), pctTropic= sum(DistTropic)/n())
+```
+
+#don't know how to visualize...
+```{r}
+ggplot(fam.var, aes())+
+  geom_point()+
+  facet_grid(Family ~, scales = "free_y")+
+```
+
+
+```{r}
+#run CCA
+CCAresult = cca(mlizsm ~ minLat + maxLat + pctActive + pctTropic, data = fam.var)
+
+CCAscores = scores(CCAresult)
+CCAtable = CCAresult$CCA$u
+CCAcorr = cor(CCAtable, fam.var[, c("minLat", "maxLat", "pctActive", "pctTropic")])
+
+
+CCAscores_species = as.data.frame(CCAscores$species) %>% 
+  rownames_to_column(var = "Habitat")
+CCAscores_sites = as.data.frame(CCAscores$sites) %>% 
+  rownames_to_column(var = "Family")
+CCAscores_var = as.data.frame(CCAscores$biplot) %>% 
+  mutate_all(function(x)x*ordiArrowMul(CCAscores$biplot)) %>%
+  rownames_to_column(var = "Covariable")
+
+```
+
+```{r}
+#I think can get CA results from CCA run
+#result_pca$var$contrib
+summary(CCAresult)
+
+
+```
+
+```{r}
+#plot results
+plot(CCAresult)
+corrplot(CCAcorr)
+
+ggplot(CCAscores_sites)+
+  aes(x =CCA1, y=CCA2)+
+  geom_hline(linetype=2, yintercept = 0)+
+  geom_vline(linetype=2, xintercept = 0)+
+  #geom_point(aes(color=Family))+
+  geom_point(data=CCAscores_species, color ="red")+
+  geom_text_repel(data = CCAscores_species, aes(label = Habitat), color= "red")+
+  geom_text_repel(data = CCAscores_var, aes(label = Covariable), color="black")+
+  geom_segment(data= CCAscores_var, aes(xend = CCA1, yend = CCA2), x =0, y=0, color = "black", arrow = arrow(length = unit(0.1, "cm")))+
+  geom_point(data=CCAscores_sites, color ="blue")+
+  geom_text_repel(data = CCAscores_sites, aes(label = Family), color= "blue")+
+  theme_bw()
+  
+  
+```
+
+
+```{r}
+#statistical test
+anova(CCAresult)
+anova(CCAresult,by="margin")
+```
+
+
+
+
+
 
 
 
