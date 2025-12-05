@@ -10,7 +10,7 @@ this is Kate testing document creation
 
 this is sophia testing
 
-# Materials and Methods 
+# Materials and Methods
 
 Methods to compare Sophia: KNN and random forest
 
@@ -31,8 +31,8 @@ You can add options to executable code like this
 
 The `echo: false` option disables the printing of code (only output is displayed).
 
-# Results 
+# Results
 
-# Discussion 
+# Discussion
 
-# References 
+# References
