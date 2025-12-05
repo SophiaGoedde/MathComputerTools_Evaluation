@@ -6,115 +6,12 @@ editor: visual
 bibliography: references.bib
 ---
 
-# Summary of What did i do below... 
+# Code RQ 1
 
---\> can be used for main report
-
-We tested whether morphological traits (Mean Female SVL and Mean Clutch Size) (### —\> should we try all again with latitude included???### )can be used to predict habitat type of lizard species. The purpose was to evaluate if rapid and trait-based predictions could help identify ecological habitat requirements that are relevant for conservation planning.
-
-Data Preparation
-
-All analyses were conducted in R. Habitat Type was used as the categorical response variable. The dataset was filtered to retain the key predictors (Mean Female SVL, Mean Clutch Size, \#### Latitude), and rows with missing values were removed. Correlation checks and exploratory plots already suggested weak associations between morphology and habitat categories, indicating limited predictive potential. However, we continued with these variables since these had most data available and are easy to measure in the field (### more justification needed??) . The dataset was randomly split into 80% training and 20% testing subsets.
-
-K-Nearest Neighbors Classification
-
-A KNN model was used to test whether species with similar morphology SVL and Cutch Size) occupy similar habitat types.
-
-Habitat Type was encoded as 7 factor levels (one per habitat category). A subset of three variables (Mean SVL, Mean Clutch Size, Habitat Type) was used. Standardization was applied to ensure scale comparability. Multiple values of k were tested and evaluated using cross-validation. The best-performing k with 36 varying with resampling) was selected. Performance was assessed using a confusion matrix and overall accuracy. A prediction grid was created to visualize the decision boundaries across trait space.
-
-KNN Results
-
-The model predicted nearly all species as Terrestrial, the dominant class. Accuracy appeared high only because of extreme class imbalance. All minority classes were never predicted. Decision surface maps showed no habitat structure (all appeared as terrestrial). Classification probability was consistently \~0.75.  Therefore the KNN totally failed to classify habitats based on morphology alone. Extreme class imbalance and insufficient trait information were the primary causes.
-
-###maybe delete this part :  Logistic Regression Comparison
-
-To look for a better modeling approach (tor to compare), a multinomial logistic regression was fit using the same predictors. Coefficient estimates for both Mean SVL and Mean Clutch Size were near zero with large standard errors, indicating no statistical relationship with the habitat types. This also showed that SVL and clutch size alone cannot explain habitat assignment, which is more strongly driven by ecological and environmental variation not captured by these two traits.
-
-The poor performance of models highlighted two main issues: Severe class imbalance (Terrestrial species overrepresented) and other Important ecological predictors missing.
-
-Therefore, a second phase of modeling was incorporated with additional variables and two different class balancing strategies (downsampling and a weighted model).  These analyses are described in the next section using Random Forest classification.
-
-RANDOM FOREST 
-
-To improve habitat classification beyond SVL and clutch size alone, a Random Forest modeling was applied using a broader set of ecological and geographic predictors. The response variable was Habitat Type, and the following predictors were included: Mean Female SVL, Average Female Weight, Mean Clutch Size, SVL at Maturity, Latitude, Longitude, Foraging Mode, Reproductive Mode, and RCM. All categorical predictors were converted to factors, and rows with missing data were removed.
-
-The dataset was split into 80% training and 20% testing, stratified by habitat type to preserve class proportions. Initial exploratory models using an unbalanced dataset revealed that classification accuracy was strongly biased toward the dominant class (“Terrestrial”). To evaluate and mitigate this class imbalance problem, two strategies were implemented:
-
- A Class-weighted Random Forest, where Class weights were calculated as the inverse of habitat class frequency so rare categories received greater influence in the model. The model was trained with 500 trees and predictor importance estimated. Moderate accuracy (\~74%), and the model began to predict a few minority habitat types, indicating improvement from including ecological covariates.Secondly, to compare, a Downsampled Random Forest (Sensitivity Analysis) was conducted within the RF. The majority class (Terrestrial) was reduced to match minority class sizes using a downsampling recipe. However, this number then got extremely low.  A new Random Forest was trained using this more balanced training dataset. This showed a very high accuracy (\~100%). However,  this was interpreted as overfitting, because rare habitat categories remained extremely small, and some did not appear in the test set at all. Both class-balancing techniques improved predictions relative to morphology-only models. However, Downsampling removed too much ecological variation → artificially inflated accuracy. Class-weighting retained all data → more reliable and biologically meaningful performance estimate.  Variable importance results consistently identified Latitude, FSVL maturity, and Foraging Mode as key predictors of habitat type, suggesting that both environmental gradients and behavioral strategies structure ecological niches in these lizards.
-
-Therefore, the inclusion of geographic and ecological variables improved the ability of Random Forest models to predict habitat type, while model evaluation demonstrated the necessity of addressing class imbalance to avoid misleading accuracy metrics.
-
-**idea 2**
-
--   **PCA** on morphological traits (weight, SVL and clutch size ) to see a pattern
-
--   then **cluster** species in trait space
-
--   **then Random Forest** to see which ecological variables (Habitat, Latitude, Reproduction) explain cluster
-
-Do similar-looking lizards (Morpho: SVL, weight and clutch size) also share similar ecological features (eco: Habitat Type and reproduction)?
-
---\> Do lizards similar body traits (size, weight, clutch size) fall into groups (morphological variables)  — and whether those groups match where they live or how they reproduce.
-
-*--\> How do morphological traits* (Mean female SVL, average female Weight, Clutchsize) *among lizard species cluster into functional groups, and to what extent are these groups determined by habitat type, reproductive strategy, and geographic distribution?*
-
--   **PCA** on morphological traits (weight, SVL and clutch size ) to see a pattern –\> what are the major axes of morphological variation across species
-
--   C**luster** species in trait space –\> functional/morphological clusters which correspond to ecological strategies –\> with PCA results group species that are close to each other in trait space = FUNCTIONAL TYPE GROUPS
-
--   **Random Forest** to see which ecological variables (Habitat, Latitude, Reproduction) explain / predict the cluster where a group (or spp?) falls into
-
-# Introduction
-
-In lizard-studies morphological traits are often related with specific habitat specializations
-
-Some important traits include phenological measurement such as SVL (Snout-Vent Length), the average weight and also reproductive traits such as the mean clutch size.
-
-Generally they differ between habitats for specific adaptations. Often, larger lizards occur in more open habitats such as deserts or grasslands, due to better heat storage and defense against predators [@pianka1973] and might therefore be a good predictor for habitat type
-
-### Some background information collected 
-
-Can morphological and reproductive traits such as mean female snout–vent length and mean clutch size together with latitude be used to predict habitat type among lizard species?
-
-Sub-question:
-
-Are morphological traits (SVL) more reliable than reproductive traits (clutch size) for predicting lizard habitat types?
-
-###### The different habitat types
-
-Arboreal - lizards live on trees or above ground vegetation [@ayres2021]
-
-Aquatic - lizards in and around water bodies [@ayres2021]
-
-Bromelicolous - Lizards that inhabit bromeliads (plants often in rainforest canopies or trunks, whose leaf-cups hold water) or use bromeliad axils as microhabitats
-
-Fossorial - primarily underground or within substrate (soil, sand, leaf litter) by burrowing or using subterranean crevices (often smaller in size)
-
-Psammophilus - living on rocks
-
-Saxicolous - Lizards occupying rocky terrains: boulders, rocky outcrops, cliff faces and rock crevices. 
-
-Semi-arboreal
-
-Terrestrial
-
-|     |     |
-|-----|-----|
-|     |     |
-|     |     |
-|     |     |
-|     |     |
-|     |     |
-
-## Data Loading & Descriptive Statistics
-
-#### Descriptive Statistics
-
-### Data exploration 
-
-Load packages
+## Data exploration
 
 ```{r cars}
+#non-relevant results were deleted
 library(tidyverse) 
 library(corrplot) # For correlation plots
 library(FactoMineR) # For PCA
@@ -144,652 +41,625 @@ names(lizard2) <- c(
   "AFWeight",              # Average Female adult weight (g)
   "SDFAWeight",              # SD Female adult weight (g)
   "SampleFAWeight",          # Sample Size Female adult weight
-  "MeanFSVL",                # Mean F SVL adults (mm)
-  "SDFSVL",               # SD F SVL adults (mm)
-  "SampleFSVL",              # Sample size Mean F SVL adults
-  "FSVL_mature",          # F SVL at maturity (mm)
+  "MeanFSVL",                # Mean Female SVL adults (mm)
+  "SDFSVL",               # Standard deviation Female SVL adults (mm)
+  "SampleFSVL",              # Sample size Mean Female SVL adults
+  "FSVL_mature",          # Female SVL at maturity (mm)
   "OffspringSVL",         # Offspring SVL (mm)
   "MeanClutch",              # Mean Clutch Size
-  "SampleClutch",            # Sample size Clutch Size
+  "SampleClutch",            # Sample size for Clutch Size
   "ReproductionMode",        # Mode of reproduction
-  "ClutchesPerYear",         # Clutches per year
+  "ClutchesPerYear",         
   "ClutchFreq",              # Clutch Frequency
-  "RCM",                     # RCM
-  "ForagingMode",            # Foraging Mode
-  "Distribution",            # Distribution
-  "Habitat_Type",            # Prefered habitat type
-  "Source"                   # Source
+  "RCM",                     
+  "ForagingMode",           
+  "Distribution",            
+  "Habitat_Type",            
+  "Source"                   
 )
-
 
 # Select relevant columns & remove na
 sublizard <- lizard2 %>%
-  select(Habitat_Type, Genus, Latitude, MeanFSVL, AFWeight, MeanClutch, Family) %>%
+  select(Habitat_Type, Latitude, MeanFSVL) %>%
   drop_na()
-# From 740 to 389 observations! 
+# From 740 to 686 observations 
 
-# summary and check dataset 
+# make latitude absolute - I THINK NO
+# sublizard$Latitude = abs(sublizard$Latitude)
+
+# summary and check dataset (especially concerning continous and categorical variables)
 summary(sublizard)
-# Habitat and Genus: Qualitative 
-# Latitude, Mean FSVL and Average Weight: Quantitative / Cont. 
-```
 
-Boxplot Mean Clutch & Habitat Type
+#Change habitat type to numercial values (1-8)
+sublizard$Habitat_Type = as.factor(sublizard$Habitat_Type)
 
-```{r}
-boxplot(MeanClutch ~ Habitat_Type, data = lizard2,
-        main = "Mean Clutch Size by Habitat Type", xlab = "Habitat Type", ylab = "Mean Clutch Size")
-```
+# Scaling Latitude and SVL 
+sublizard_scaled <- sublizard %>%
+  mutate(
+    Latitude = scale(Latitude),
+    MeanFSVL = scale(MeanFSVL))
 
-Boxplot MeanClutch Size & Reproduction
-
-```{r}
-boxplot(MeanClutch ~ Reproduction, data = lizard,
-        main = "Mean Clutch Size by Mode of Reproduction", xlab = "Mode of Reproduction", ylab = "Mean Clutch Size")
-```
-
-Boxplot Adult Weight & Habitat Type
-
-```{r}
-boxplot(AFWeight ~ Habitat_type, data = lizard,
-        main = "Adult Weight by Habitat Type", xlab = "Habitat Type", ylab = "Adult Weight")
-
-```
-
-Boxplot Female SVL and Habitat Type
-
-```{r}
-boxplot(MeanFSVL ~ Habitat_type, data = lizard_clean,
+# Checking Data: Boxplot for relationship between mean female SVL and Habitat Type. Same is done for 
+boxplot(MeanFSVL ~ Habitat_Type, data = lizard2,
         main = "SVL Mean by Habitat Type", xlab = "Habitat Type", ylab = "Mean Female SVL ")
 
-```
-
-Boxplot Habitat Type and Latitude
-
-```{r}
-boxplot(Latitude ~ Habitat_type, data = lizard_clean,
+boxplot(Latitude ~ Habitat_Type, data = lizard2,
         main = "Latitude by Habitat Type", xlab = "Habitat Type", ylab = "Latitude")
-```
+# for a few habitat types a clear difference can be seen 
 
-Distribution - Pairs plot with correlation
-
-```{r}
+#Distribution - Pairs plot with correlation
 GGally::ggpairs(sublizard, aes(color = Habitat_Type))
 
-```
-
-Visualization: SVL & Weight -\> Habitat Type
-
-```{r}
+# Visualization: SVL & Latitude -> Habitat Type
 # habitat ~ SVL
 ggplot(sublizard, aes(x = Habitat_Type, y = MeanFSVL, fill = Habitat_Type)) +
   geom_boxplot() + theme_bw()
+# # It does not seem like SVL has an impact on habitat type - similar distributed. 
 
-# habitat ~ weigth 
-ggplot(sublizard, aes(x = Habitat_Type, y = AFWeight, fill = Habitat_Type)) +
+# habitat ~ latitude 
+ggplot(sublizard, aes(x = Habitat_Type, y = Latitude, fill = Habitat_Type)) +
   geom_boxplot() + theme_bw()
 
-# latitude ~ weight
-ggplot(sublizard, aes(x = Latitude, y = AFWeight, color = Habitat_Type)) +
-  geom_point(size = 3) + theme_minimal()
-
 ```
 
-It does not seem like SVL has an impact on habitat type - similar distributed. But anyways  - lets go and try.
-
-#### CROSS VALIDATION 
-
-KNN can predict continous but also categorical variables.
-
-Goal: Find best predictive model for predicting Habitat Type as a function of a polynomial of Mean SVL and Average Weight.
-
-Look at data
+## KNN and cross validation
 
 ```{r}
-p1 <- ggplot(sublizard, aes(x=MeanFSVL, y=Habitat_Type)) + geom_point() + theme_bw()
-p2 <- ggplot(sublizard, aes(x=MeanClutch, y=Habitat_Type)) + geom_point() + theme_bw()
-gridExtra::grid.arrange(p1,p2, ncol=2)
-```
-
-Trying the same for clutch size
-
-```{r}
-p1 <- ggplot(lizard2, aes(x=MeanFSVL, y=MeanClutch)) + geom_point() + theme_bw()
-p2 <- ggplot(lizard2, aes(x=Latitude, y=MeanClutch)) + geom_point() + theme_bw()
-gridExtra::grid.arrange(p1,p2, ncol=2)
-```
-
-Polym function inside lm function to fit the model (with d=2):
-
-```{r}
-model_degree_2 <- lm(MeanClutch~ polym(MeanFSVL, AFWeight, degree = 2),
-data = sublizard)
-
-# calculating MSE (mean square error) 
-prediction_degree_2 <- predict(model_degree_2)
-mean((prediction_degree_2- sublizard$MeanClutch)^2)
-# [1] 3.056381
-```
-
-Same for d= 3 to compare MSE
-
-```{r}
-model_degree_3 <- lm(MeanClutch~ polym(MeanFSVL, AFWeight, degree = 3),
-data = sublizard)
-
-# calculating MSE (mean square error) 
-prediction_degree_3 <- predict(model_degree_3)
-mean((prediction_degree_3- sublizard$MeanClutch)^2)
-#[1] 2.497672
-# lower value bcs new variables added - less MSE on training data 
-```
-
-## KNN
-
-data  - change habitat type to numercial values (1-8)
-
-```{r}
-sublizard$Habitat_Type = as.factor(sublizard$Habitat_Type)
-sublizard = sublizard %>%
-mutate_if(is.numeric, scale)
-```
-
-hange habitat type to numercial values (1-8)
-
-Objective: find predictive model which with given SVL and cluct size best predicts Lizards Habitat Type
-
-Plot Data
-
-```{r}
+### KNN ###########
+set.seed(123)
+# Plot data 
 ggplot(sublizard) +
-aes(x = MeanFSVL, y = MeanClutch, color = Habitat_Type) +
+aes(x = MeanFSVL, y = Latitude, color = Habitat_Type) +
 geom_point() +
 labs(x='Mean SVL'
-,y='Mean Clutch Size')
-```
+,y='Latitude')
+#INTERPRETATION 
+#Pattern Terrestrial accumulation around -5 ; -25 and 25. 
+# Saxicolous: accumulation at -10 and 15. 
 
-Observation: Arboreal more Weight and SVL. Terrestrial wide spread Saxicolous only for low weight and medium SVL.
-
-Do same for family
-
-```{r}
-#change numerical 
-sublizard$Family = as.factor(sublizard$Family)
-sublizard = sublizard %>%
-mutate_if(is.numeric, scale)
-
-#plot 
-ggplot(sublizard) +
-aes(x = MeanFSVL, y = MeanClutch, color = Family) +
-geom_point() +
-labs(x='Mean SVL'
-,y='Mean Clutch Size')
-```
-
-NOT USING FAMILY - Was just a test
-
-New subdataset with only 3 variables
-
-```{r}
-CSVLH_lizard <- lizard2 %>%
-  select(Habitat_Type, MeanFSVL, MeanClutch) %>%
-  drop_na()
-```
-
-Separation/Split of test and training data randomly (80-20%)
-
-Mean Clutch, SVL and Habitat Type
-
-```{r}
-# We split the data (80% for training)
-split <- initial_split(CSVLH_lizard, prop = 0.8)
+# Random splitting of test and training data randomly (90-10%) with rsample package 
+split <- initial_split(sublizard, prop = 0.8)
 train_set <- analysis(split)
 dim(train_set); head(train_set)
 
-```
-
-```{r}
 test_set <- assessment(split)
 dim(test_set); head(test_set)
-```
 
-First kNN classifier set with k= 15
 
-```{r}
-#remove the Habitat_Type column (the response). The response for the training data set is given in the ‘cl’ argument
+### First KNN classifier with k 15
 
-first_knn_liz <- knn(train = select(train_set,-Habitat_Type),
+#removing the Habitat_Type column (response) since train and test must only contain predictors. 
+# The response for the training data set is given in the ‘cl’ argument
+
+### Test classifier on test set 
+first_knn <- knn(train = select(train_set,-Habitat_Type),
 test = select(test_set,-Habitat_Type),
 cl = train_set$Habitat_Type,
-k = 15, # Number of neighbors
-prob = TRUE) # We want to get the probabilities
+k = 15, 
+prob = TRUE)
 
-# look at confusion matrix 
-first_confusion_matrix <- table(Predicted = first_knn_liz,
+### Confusion matrix 
+first_confusion_matrix <- table(Predicted = first_knn,
 True = test_set$Habitat_Type)
 first_confusion_matrix
-```
+# INTERPRETATION: Terrestrial was 86 times truly predicted. No other Hbaitat Type was truly predicted. Aboreal and Saxicolous Habitats where 26 and 18 times falsy predicted as Terrestrial. The table shows that every new Hbaitat predicted was predicted as Terrestrial, which is very bad... This shows that the model was not good. Reasons for this are highly probable the unbalanced dataset. Further explanations below. 
 
-True positives:
+#Metrics to assess quality of clssifier
 
-False Positives:
-
-True negatives:
-
-False negatives:
-
-metrics to assess quality of clssifier
-
-```{r}
-#check accuracy of first classifier 
+### Check accuracy of first classifier 
 sum(diag(first_confusion_matrix)) / sum(first_confusion_matrix)
-```
 
-#### Cross validation for choice of k 
+### Cross validation for choice of k
+# Defining how many folds (10 folds means splitting dataset into 10 equal parts. The model is trained on 9 parts and tested on the remaining 1, this is repeated 10 times (every time with a different fold). 
+ctrl <- trainControl(method = "cv", verboseIter = FALSE, number = 10) 
 
-```{r}
-ctrl <- trainControl(method = "cv", verboseIter = FALSE, number = 10) # We define how many folds (V) we
-knnFit <- train(Habitat_Type~
-.,
-data = train_set,
-method = "knn",
-trControl = ctrl ,
-tuneGrid = expand.grid(k = 1:50)
-)
+# knn fit with centering and scaling all numeric variables for distance calculations
+knnFit <- train(Habitat_Type~.,
+                data = train_set,
+                method = "knn",
+                trControl = ctrl ,
+                preProcess = c("center", "scale"),
+                tuneGrid = expand.grid(k = 1:50))
 plot(knnFit)
-```
+# Plot shows development of accuracy according to the number of neighbours chosen (train dataset contains 10% of all data)
 
-CV accuracy if highest for which k
-
-```{r}
+### CV accuracy if highest for which k
 k_best <- knnFit$bestTune$k
 k_best
-#changes all the time depending on test and train data 
-# i did once and it was 8 and i did again it was 36
-```
+#This best k value changes all the time depending on test and train data (randomly distributed)
+# Best k: 20
 
-Now doing the same with k=8
 
-```{r}
+### Now running KNN with best k fit of the train set
 best_knn <- knn(train = select(train_set,-Habitat_Type),
-test = select(test_set,-Habitat_Type),
-cl = train_set$Habitat_Type,
-k = k_best, # Number of neighbors
-prob = TRUE) # We want to get the
+                test = select(test_set,-Habitat_Type),
+                cl = train_set$Habitat_Type,
+                k = k_best,
+                prob = TRUE)
 best_confusion_matrix <- table(Predicted = best_knn,
-True = test_set$Habitat_Type)
+                               True = test_set$Habitat_Type) 
 best_confusion_matrix
-```
+# Now the confusion matrix shows a bit better results. The habitat types Saxicolous and Aboreal were, additional to 48 correct predictions for Terrestrial, two times each correctly predicted. However, the terrestrial habitat type was 5 times falsy positive predicted. 
+accuracy_best <- sum(diag(best_confusion_matrix)) / sum(best_confusion_matrix)
+accuracy_best
+# 0.5652174
 
-Accuracy of best classifier of k by CV, and finally average over all best k.
 
-confusion matrix already shows that its 83 times predicted correctly, saxicolous only 4 times and the rest was never predicted correctly. Model is biased towards the majority class (terrestrial) -\> imbalanced dataset but also too few predictor variables since habitat depends on many more variables such as behavious, climate etc and not just body size and egg laying number.
+### Plotting the results
+# Predict zone of influence for each class –> define a prediction grid
+# To know the range check data raneg of SVL and Latitude first
+range(sublizard$MeanFSVL)
+# 21.397 312.100
+range(sublizard$Latitude)
+# 0.29 51.35
 
-Two possibilities: adjust data and even it or use more predictors?!
+# Prediction grid with min and max values of predictors
+grid_prediction <- expand.grid(
+  MeanFSVL = seq(min(sublizard$MeanFSVL), max(sublizard$MeanFSVL), length.out = 200),
+  Latitude = seq(min(sublizard$Latitude), max(sublizard$Latitude), length.out = 200)
+)
+grid_prediction
 
-```{r}
-sum(diag(best_confusion_matrix)) / sum(best_confusion_matrix)
-```
-
-rerun the splitting in training and test set multiple times, each of them with the choice –\> HOW?
-
-NOW: plotting results
-
--   Predict zone of influence for each class –\> define a prediction grid
-
-```{r}
-# what values to choose here? like min and max range? 
-# what is the by= ? 
-# max size reached 16gb- what to do
-grid_prediction <- expand.grid(MeanFSVL = seq(20, 150, by = .1),
-MeanClutch = seq(100, 80000, by = .1))
-
-# results look weird! 
-
-```
-
-predcit for the chosen k (36) using all data (reunite train and test data)
-
-```{r}
-predicted_Habitat <- knn(train = select(CSVLH_lizard,-Habitat_Type), # Use all data
-test = grid_prediction, # We predict on the grid
-k = k_best, # Value of k
-cl = CSVLH_lizard$Habitat_Type, # Truth
-prob = TRUE) # We keep the probabilities of the prediction
-# The proba is coded here as an ‘attribute’ of the prediction vector
-# Extract this attribute as follows
+### Predcition grid for the chosen k (20) 
+# using all data (reunite train and test data
+predicted_Habitat <- knn(train = select(CSVLH_lizard,-Habitat_Type), 
+test = grid_prediction, 
+k = k_best, 
+cl = CSVLH_lizard$Habitat_Type, 
+prob = TRUE) 
+# Prob=TRUE for the uncertainty associated with estimation (coded as attribute of prediction vector) # This attribute now has to be extracted 
 proba_Habitat <- attr(predicted_Habitat, "prob")
-# We stock the result in a table
+proba_Habitat
+# Final-result in table 
 final_predictions <- grid_prediction %>%
-mutate(Habitat_Type = predicted_Habitat, # We add 2 columns
+mutate(Habitat_Type = predicted_Habitat,
 Probability = proba_Habitat)
-
 summary(final_predictions)
-```
+final_predictions
+# INTERPRETATION: only the first three habitats were predicted (Terretrial 38600 times, Aboreal 903 times and Saxicolous 497 times). 
 
-Now plot these predictions
+# mean predictions per class 
+class(final_predictions)
+str(final_predictions)
+head(final_predictions)
 
-```{r}
-# Graph of Habitat Prediction 
-ggplot(final_predictions) + # In final predictions
-aes(x = MeanFSVL, y = MeanClutch) + # Elevation is plotted as a function of slope
-geom_raster(aes(fill = Habitat_Type), alpha = .6) + # As a raster,
-# whose fill is based on the Habitat type factor,
-# alpha is a transparency parameter
-geom_point(data = CSVLH_lizard, aes(color = Habitat_Type)) + # Adding points
-# these points come from other data (hence the data = ), we colour according to presence
-labs(x = 'Mean SVL'
-, y = 'Mean Clutch Size'
-, title = 'Predicted Habitat Type') + # Axis names
-scale_x_continuous(expand = c(0, 0)) + # No borders around the image
-scale_y_continuous(expand = c(0, 0))
-
-# this does not look correct at all! 
-
-```
-
-The same model can be used to represent the uncertainty associated with the prediction. This uncertainty is given as the frequency of neighbors not belonging to the predicted class among all the neighbors.
-
-```{r}
+### Plotting predictions 
 ggplot(final_predictions) +
-aes(x = MeanFSVL, y = MeanClutch) +
-geom_raster(aes(fill = 1- proba_Habitat)) + # Fill with uncertainty
-# This time the colour range is continuous
-geom_point(data = CSVLH_lizard, aes(color = Habitat_Type)) +
-labs(x = "Mean SVL", y = "Mean Clutch Size", title = "Habitat Prediction uncertainty",
+  aes(x = MeanFSVL, y = Latitude) +
+  geom_raster(aes(fill = Habitat_Type), alpha = 0.6) +
+  geom_point(data = sublizard, aes(color = Habitat_Type), size = 1.5) +
+  labs(
+    x = 'Mean SVL',
+    y = 'Latitude',
+    title = 'KNN-Predicted Habitat Types'
+  ) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0))
+# INTERPRETATION: The graph shows that almost all predictions are terrestrial which shows for a very unbalanced model due to an extramly unbalanced dataset and potentially too weak predictors too. 
+
+
+### Present uncertainty with predictors 
+# Uncertainty is the frequency of neighbors not belonging to the predicted class among all the neighbors.
+ggplot(final_predictions) +
+aes(x = MeanFSVL, y = Latitude) +
+geom_raster(aes(fill = 1- proba_Habitat)) + # =uncertainty
+geom_point(data = sublizard, aes(color = Habitat_Type)) +
+labs(x = "Mean Female SVL", y = "Latitude", title = "KNN-Habitat Prediction uncertainty",
 fill = "Uncertainty") +
 scale_x_continuous(expand = c(0, 0)) +
 scale_y_continuous(expand = c(0, 0)) +
 scale_fill_gradient(low = "white", high = "darkred")
+# INTERPRETATION: The classifier learned nothing about the havitat type. The uncertainry is the same almost everywhere and very high. (mostly over 0.5), which indicated a high uncertainty and therefore a bad prediction. Reasons for this stated below (Class imbalance in dataset and probably too few predictors). 
+# The model is biased towards the majority class. 
 ```
 
-The classifier learned **NOTHING** about habitat variation in a 2-trait space. –\> Uncertainty = same everywhere
-
-#### RESULTS  KNN 
-
-KNN totally failed lol - cant predict Habitat Type because its very unevenly distributed. –\> results show that it just predicts the most common class (terrestrial) all the time. probabilities are **0.75**, which signals:
-
--   the nearest neighbors were always 75% terrestrial
-
--   no useful pattern for the other habitats
-
--\> **KNN is NOT effectively predicting habitat type from MeanFSVL + MeanClutch**
-
-#### 
-Comparing KNN to a linear logisitc regression Model 
-
-We then train the generalized linear model on the training data and look at the MSE on the test data to see which method (KNN or logistic regression) has the best performance (from slides).
+## Random Forest
 
 ```{r}
-library(nnet)
-table(train_set$Habitat_Type)
-
-
-model_Habitat <- multinom(Habitat_Type ~ MeanFSVL + MeanClutch,data = train_set)
-
-summary(model_Habitat)
-
-```
-
-#### Results Multilinear regression:
-
-predictors have:
-
--   very small coefficient values
-
--   large standard errors
-
-→ Suggests **weak/no relationships** between size/clutch traits and habitat type.
-Rason: Habitat type is influenced by many more ecological factors and mean clutch and svl only capture broad differences and also dataset is highly imbalanced
-
-```         
-Residual Deviance: 1267.77 
-AIC: 1309.77
-```
-
-#### What can be done next that KNN failed 
-
--   fix imbalance issue
-
--   down sample the terrestrial class
-
-<!-- -->
-
--   weighted model which penalized for misclassifying rare habitats
-
-## Random Forest 
-
-Preparing the data
-
-```{r}
+# Loading required packages and data.
 library(tidyverse)
 library(rsample) 
 library(rpart)
 library(rpart.plot)
 library(randomForest)
-library(caret)
-
-# selecting new predictors and response - more variables for better model accuracy 
-RFmodel_data <- lizard2 %>%
-  select(Habitat_Type, MeanFSVL, AFWeight, MeanClutch, FSVL_mature,
-         Latitude, Longitude, ForagingMode, ReproductionMode, RCM)
-# remove na 
-RFmodel_data <- na.omit(RFmodel_data) 
-
-# Converting categorical variables to factors
-RFmodel_data$Habitat_Type <- as.factor(RFmodel_data$Habitat_Type)
-RFmodel_data$Foraging <- as.factor(RFmodel_data$ForagingMode)
-RFmodel_data$Reproduction <- as.factor(RFmodel_data$ReproductionMode)
-
-#this didnt work
-#mutate(RFmodel_data = factor(Habitat_Type, levels = c("Aquatic",  "Arboreal", "Bromelicolous", "Fossorial", "Psammophilus", "Semi-arboreal", "Terrestrial")))
-
-
-```
-
-Splitting into train and test set
-
-```{r}
-#split 80-20 
-split_RF <- initial_split(RFmodel_data, prop = 0.8,
-strata = "Habitat_Type")
-train_RF <- analysis(split_RF)
-test_RF <- assessment(split_RF)
-```
-
-#### 0) General Maximal Tree (no downsampling or weighted) 
-
-```{r}
-maximal_tree <- rpart(Habitat_Type~
-., # Formula: we explain the variable sol with all the others
-data = RFmodel_data,
-method = "class", # Classification tree
-control = rpart.control(minsplit = 2, # Minimal number of
-# individuals in a node before cut
-cp = 0, # Parameter of minimal complexity
-xval = 1)) # Number of cross-validation
-
-rpart.plot(maximal_tree)
-```
-
-very complex lol
-
-choosing complexity parameter and decide how many splits
-
-```{r}
-maximal_tree <- rpart(Habitat_Type~
-.,
-data = RFmodel_data,
-method = "class",
-control = rpart.control(minsplit = 7,
-cp=0,
-xval = 100)) # Number of cross-validation: 100
-
-maximal_tree$cptable
-
-```
-
-Table: The optimal cp is the one corresponding to the lowest mean error:
-
-```{r}
-# We choose cp_optimal in the column "CP"
-# The row index is the one for which the value in column "xerror" is minimal
-cp_optimal <- maximal_tree$cptable[which.min(maximal_tree$cptable[, "xerror"]) , "CP"]
-cp_optimal
-#0.02597403
-```
-
-now prune maximal tree for optimal tree
-
-```{r}
-optimal_tree <- prune(maximal_tree, cp = cp_optimal)
-rpart.plot(optimal_tree)
-```
-
-```{r}
-# Predictions on test set
-# (not used for training)
-predictions = predict(optimal_tree, newdata = select(test_RF,- Habitat_Type))
-predicted = apply(predictions,1,which.max)
-predicted_factor = factor(x = predicted, levels = c(1,2,3,4,5,6),
-labels = c("Aquatic","Aboreal","Fossorial", "Saxicolous", "Semi-arboreal", "Terrestrial"))
-# Confusion matrix
-confusion_matrix = table(prediction = predicted_factor, truth = test_RF$Habitat_Type)
-confusion_matrix
-```
-
-This is \# Performance of predictions on test set
-
-\# accurary = (correct classifications)/(total classifications)
-
-```{r}
-accuracy = sum(diag(confusion_matrix)) / sum(confusion_matrix)
-accuracy
-#0.9019608
-```
-
-Slides: Here, cross-validation is only performed on cp and not on minsplit. In principle, there would be nothing to prevent validation on both, but this is not coded by default.
-
-#### 1) RF with weightened classes
-
-Now balance the dataset (not in slides) but its too uneven. This keeps only as many terrestrial species as the smaller classes (loose data from terrestrial class but keeps dataset real and prevents bias).
-
-Another option would be to upsample rare classes but can lead to overfitting
-
-OR weightened random forest - no resampling but needs tuning?
-
-```{r}
-# Calculate class weights (inverse frequency → more weight to rare habitats)
-class_weights <- 1 / table(train_RF$Habitat_Type)
-class_weights <- class_weights / sum(class_weights)  # normalize
-
-set.seed(123)
-rf_weighted <- randomForest(
-  Habitat_Type ~ .,
-  data = train_RF,
-  ntree = 500,
-  importance = TRUE,
-  classwt = class_weights
-)
-
-# Predictions & performance
-pred_weighted <- predict(rf_weighted, newdata = test_RF)
-
-conf_weighted <- table(Observed = test_RF$Habitat_Type,
-                       Predicted = pred_weighted)
-conf_weighted
-
-```
-
-and again true positives are only terrestrial (but now only 31), saxicolous 2 and aboreal 5. The rest 0.
-
-```{r}
-
-accuracy_weighted <- mean(pred_weighted == test_RF$Habitat_Type)
-accuracy_weighted
-# 0.745098
-
-varImpPlot(rf_weighted, main = "Variable Importance - Weighted RF")
-```
-
-Latitude, FSVL mature and Foraging Mode are best predictors?
-
-#### 2) RF with downsampling 
-
-\- to later comnpare with weighted RF results
-
-```{r}
-# Downsampling 
+library(caret) 
 library(themis) 
 library(permute)
 library(recipes)
 
-# Balance the training set by downsampling the majority class
-rec_down <- recipe(Habitat_Type ~ ., data = train_RF) %>%
-  step_downsample(Habitat_Type)
+# Same Dataset 
+RF_sublizard <- lizard2 %>%
+  select(Habitat_Type, Latitude, MeanFSVL) %>%
+  drop_na()
+# Important to convert categorical variables to factors (Habitat Type, but have done that above already)
+RF_sublizard$Habitat_Type <- as.factor(RF_sublizard$Habitat_Type)
 
-train_down <- prep(rec_down) %>% bake(new_data = NULL)
+### Splitting dataset into train and test data the same way as KNN 
+# Why: To compare the results and the show the robustness of algorithm and to later compare results of accuracy with KNN. 
+train_RF_lizard <- train_set
+test_RF_lizard  <- test_set
 
-table(train_down$Habitat_Type)  
-# a bit more balanced!  but only 2 each category - very little 
+
+
+#### Choosing hyperparameters with cross-validation 
+parameters_CV_lizard <- trainControl(method = "repeatedcv",
+                          number = 10,
+                          repeats = 5)
+# For all the available methods (and the necessary arguments), please refer to help.
+rf_grid <- expand.grid(mtry = 1:2) # because 2 variables 
+
+predictor_forest <- caret::train(Habitat_Type ~., 
+                                 data = train_RF_lizard, 
+                                 method = "rf", 
+                                 metric = "Accuracy",
+                                 trControl = parameters_CV_lizard, 
+                                 tuneGrid = rf_grid,
+                                 ntree = 500)
+predictor_forest 
+# chosen mtry was 1 
+
+# Visualize cross-validation results of mtry 
+as.data.frame(predictor_forest$results) %>%
+ggplot(aes(x = mtry, y = Accuracy)) +
+geom_point()
+
+# Aggregate performance results into an object to use later 
+my_predictions <- predict(predictor_forest, newdata = select(test_RF_lizard,- Habitat_Type))
+my_predictions
+
+# Contingence table
+table(prediction = my_predictions, truth = test_RF_lizard$Habitat_Type)
+
+###### I will run three RF: normal (imbalanced) dataset, weightened and balanced 
 ```
 
+#### 1) RF with normal/baseline data (imbalanced)
+
 ```{r}
-set.seed(123)
-rf_down <- randomForest(
+
+forest_lizard_base <- randomForest(
+  Habitat_Type ~.,
+  data = train_RF_lizard, 
+  ntree = 500,
+  maxnodes = 10,
+  mtry = 1,
+  importance = TRUE)
+
+# Predictions
+rf_pred_base <- predict(
+  forest_lizard_base,
+  newdata = select(test_RF_lizard, -Habitat_Type))
+
+# Accuracy
+acc_base <- predict(forest_lizard, newdata = select(test_RF_lizard,- Habitat_Type)) %>% 
+  table(prediction = ., truth = test_RF_lizard$Habitat_Type) %>%
+  {sum(diag(.)) / sum(.)}
+#0.6043165
+
+# Look at Confusion Matrix 
+conf_base <- table(prediction = rf_pred_base,
+                       truth = test_RF_lizard$Habitat_Type)
+conf_base
+# A few rare habitats were correctly predicted:
+# Arboreal: 6 correct & Saxicolous: 1 correct
+# This is already better than KNN, which predicted 0 for all rare habitats but still very weak. Therefore weighnted class 
+
+### Chechking variable importance 
+varImpPlot(forest_lizard)
+# Latitude more important in predicting Habitat Type than Mean SVL. 
+```
+
+#### 2) RF with wheightened classes
+
+```{r}
+# Loosing data from terrestrial class to match closer with rare habitats. Downside: loosing a lot of data and since small groups are VERY small this might lead to even more inaccuracy. Upsampling of rare classed could lead to over-fitting. 
+
+# Calculate class weights (inverse frequency → more weight to rare habitats)
+class_weights <- 1 / table(train_RF_lizard$Habitat_Type)
+class_weights <- class_weights / sum(class_weights)
+
+# RF with weightened classes 
+forest_lizard_weighted <- randomForest(
+  Habitat_Type ~ .,
+  data = train_RF_lizard,
+  ntree = 500,
+  mtry = 1,
+  importance = TRUE,
+  classwt = class_weights)
+
+
+# Predictions
+rf_pred_weighted <- predict(
+  forest_lizard_weighted,
+  newdata = select(test_RF_lizard, -Habitat_Type))
+
+# Accuracy 
+acc_weighted <- predict(forest_lizard_weighted, newdata = select(test_RF_lizard,- Habitat_Type)) %>%
+table(prediction = ., truth = test_RF_lizard$Habitat_Type) %>%
+  {sum(diag(.)) / sum(.)}
+acc_weighted
+# 0.5539568
+
+# Look at Confusion Matrix 
+conf_weighted <- table(prediction = rf_pred_weighted,
+                       truth = test_RF_lizard$Habitat_Type)
+conf_weighted
+# A bit better but still strong bias towards terrestrial. 
+# correctly predicts more Arboreal and Saxicolous individuals (7 and 8 true positives, respectively, vs. 6 and 1 in base prediction). 
+# but still many habitat types undetected. 
+# Aquatic, Bromelicolous, Fossorial, Psammophilus, and Semi-arboreal have zero true positives
+```
+
+#### 3) RF with downsampling
+
+```{r}
+# Downsample the training data by reducing terrestrial class
+train_down <- downSample(
+  x = select(train_RF_lizard, -Habitat_Type),
+  y = train_RF_lizard$Habitat_Type,
+  yname = "Habitat_Type")
+# Already not good since all classes end up with only 2 samples
+# cannot be used! 
+
+table(train_down$Habitat_Type)
+# now all have only 2 observations - very likely that this is too few! 
+# Upsampling might be a better solution with this dataset. 
+
+# RF with downsampled data 
+forest_lizard_down <- randomForest(
   Habitat_Type ~ .,
   data = train_down,
   ntree = 500,
+  mtry = 1,
   importance = TRUE
 )
 
-pred_down <- predict(rf_down, newdata = train_down)
-
-conf_down <- table(Observed = train_down$Habitat_Type, Predicted = pred_down)
+# Predictions on original test set
+rf_pred_down <- predict(forest_lizard_down,
+                        newdata = select(test_RF_lizard, -Habitat_Type))
+rf_pred_down
+# Confusion matrix
+conf_down <- table(prediction = rf_pred_down,
+                   truth = test_RF_lizard$Habitat_Type)
 conf_down
+# True positives: Arboreal: 6 ; Saxicolous: 3 ; Fossorial: 1 ; Semi-arboreal: 1 ; Psammophilus: 1 ; Aquatic: 3 ; Bromelicolous: 0 (still too rare)
+# But more missclassification bcs 90% of dataset (terrestrial) was removed to match the samll sampled
+# Therefore: overfitting to the downsampled minority classes.
+
+# Accuracy
+acc_down <- sum(diag(conf_down)) / sum(conf_down)
+acc_down
+# 0.1870504
+# Very low accuracy. So more rare habitats were predicted but many of them might be falsly predicted. 
 
 ```
 
-```{r}
-accuracy_down <- mean(pred_down == train_down$Habitat_Type)
-accuracy_down
+#### 4) RF with upsampled data
 
-varImpPlot(rf_down, main = "Variable Importance - Downsampled RF")
+Upsampling can lead to overfitting. However, it might be a good idea to just try and see since otherwise rare classes are so small, that they disappear during training. CAREFUL INTERPRETATION!
+
+```{r}
+# Upsample the training data by duplicating minority classes
+train_up <- upSample(
+  x = select(train_RF_lizard, -Habitat_Type),
+  y = train_RF_lizard$Habitat_Type,
+  yname = "Habitat_Type")
+
+table(train_up$Habitat_Type)
+# Now all have 332 observations. 
+
+# RF on upsampled data
+forest_lizard_up <- randomForest(
+  Habitat_Type ~ .,
+  data = train_up,
+  ntree = 500,
+  mtry = 1,
+  importance = TRUE)
+
+# Predictions on original test set
+rf_pred_up <- predict(forest_lizard_up,
+                      newdata = select(test_RF_lizard, -Habitat_Type))
+
+# Confusion matrix
+conf_up <- table(prediction = rf_pred_up,
+                 truth = test_RF_lizard$Habitat_Type)
+conf_up
+
+# Accuracy
+acc_up <- sum(diag(conf_up)) / sum(conf_up)
+acc_up
+# 0.5107914
 ```
 
-#### COMPARING BOTH MODELS (downsampled RF and weightened RF)
+#### Comparing 4 RF models
 
 ```{r}
-model_comparison <- data.frame(
-  Model = c("Class-Weighted RF", "Downsampled RF"),
-  Accuracy = c(accuracy_weighted, accuracy_down)
+# Comparison of all 4 Random Forest models
+rf_comparison <- data.frame(
+  Model = c("Baseline RF", "Class-Weighted RF", "Downsampled RF", "Upsampled RF"),
+  Accuracy = c(acc_base, acc_weighted, acc_down, acc_up))
+rf_comparison
+
+# Visualize results 
+ggplot(rf_comparison, aes(x = Model, y = Accuracy, fill = Model)) +
+  geom_col() +
+  theme_minimal() +
+  coord_flip() +
+  labs(title = "Comparison of Random Forest Models",
+       y = "Accuracy",
+       x = "")
+# Baseline RF achieved highest accuracy but its because its bias towrads terrestrial class and no detection of rare classes.
+```
+
+## Comparing RF & KNN 
+
+```{r}
+## Comparison: KNN & RF
+cm_knn_RF <- confusionMatrix(
+  data      = best_knn_RF,
+  reference = y_test_RF)
+
+cm_rf_RF <- confusionMatrix(
+  data      = rf_pred_RF,
+  reference = y_test_RF)
+
+# get mean balanced accuracy across classes
+balacc <- function(cm) {
+  mean(cm$byClass[, "Balanced Accuracy"], na.rm = TRUE)}
+
+results_compare <- data.frame(
+  Model            = c("KNN", "Random Forest"),
+  Accuracy         = c(cm_knn_RF$overall["Accuracy"],
+                       cm_rf_RF$overall["Accuracy"]),
+  Kappa            = c(cm_knn_RF$overall["Kappa"],
+                       cm_rf_RF$overall["Kappa"]),
+  BalancedAccuracy = c(balacc(cm_knn_RF),
+                       balacc(cm_rf_RF)))
+
+results_compare
+# 
+```
+
+#### Extra: RF for Habitat Groups
+
+##### RF groups - Weighted classes
+
+```{r}
+# Just to see/get an idea: Predicting three habitat categories (grouped into three) by more ecological variables just to see what is more important: imbalanced data or the need for more ecological variables.#
+
+# Grouping all 8 habitats into 3 groups 
+# Recode broad habitat classes
+lizard2 <- lizard2 %>%
+  mutate(Habitat_Broad = case_when(
+      Habitat_Type %in% c("Terrestrial", "Fossorial") ~ "Ground",
+      Habitat_Type %in% c("Saxicolous", "Psammophilus") ~ "Rock",
+      Habitat_Type %in% c("Arboreal", "Semi-arboreal", "Bromelicolous", "Aquatic") ~ "Above",
+      TRUE ~ NA_character_))
+
+# Convert to factor
+lizard2$Habitat_Broad <- factor(lizard2$Habitat_Broad,
+                                levels = c("Ground", "Rock", "Above"))
+
+# delete na 
+rf_data <- lizard2 %>%
+  select(
+    Habitat_Broad,
+    MeanFSVL,
+    AFWeight,
+    FSVL_mature,
+    MeanClutch,
+    Latitude,
+    ForagingMode,
+    ReproductionMode) %>%
+  drop_na()
+
+# Make sure categorical predictors are factors
+rf_data$ForagingMode      <- as.factor(rf_data$ForagingMode)
+rf_data$ReproductionMode  <- as.factor(rf_data$ReproductionMode)
+rf_data$Habitat_Broad     <- droplevels(rf_data$Habitat_Broad)
+
+summary(rf_data$Habitat_Broad)
+
+
+# Train and test split for RF 
+set.seed(123)  # for reproducibility
+
+split_rf <- initial_split(rf_data, prop = 0.8,
+                          strata = "Habitat_Broad")
+
+train_rf <- analysis(split_rf)
+test_rf  <- assessment(split_rf)
+
+table(train_rf$Habitat_Broad)
+table(test_rf$Habitat_Broad)
+
+# class weights to handle existing imbalance 
+class_weights <- 1 / table(train_rf$Habitat_Broad)
+class_weights <- class_weights / sum(class_weights)
+
+class_weights
+
+
+# Fit class weighted RF 
+set.seed(123)
+
+rf_broad <- randomForest(
+  Habitat_Broad ~ MeanFSVL + AFWeight + FSVL_mature +
+                  MeanClutch + Latitude +
+                  ForagingMode + ReproductionMode,
+  data = train_rf,
+  ntree = 500,
+  mtry = 1,          
+  importance = TRUE,
+  classwt = class_weights)
+
+print(rf_broad)
+
+##### Predictions and confusion matrix 
+# Predictions
+pred_broad <- predict(rf_broad, newdata = test_rf)
+
+# Confusion matrix
+conf_broad <- table(
+  Prediction = pred_broad,
+  Truth      = test_rf$Habitat_Broad
+)
+conf_broad
+
+# Accuracy
+acc_broad <- sum(diag(conf_broad)) / sum(conf_broad)
+acc_broad
+
+# More detailed metrics
+confusionMatrix(pred_broad, test_rf$Habitat_Broad)
+
+#### Which variable has biggest importance
+varImpPlot(rf_broad,
+           main = "Variable Importance for Broad Habitat Classes")
+
+```
+
+##### RF groups - Baseline data
+
+```{r}
+set.seed(123)
+
+rf_broad_base <- randomForest(
+  Habitat_Broad ~ MeanFSVL + AFWeight + FSVL_mature +
+                  MeanClutch + Latitude +
+                  ForagingMode + ReproductionMode,
+  data = train_rf,
+  ntree = 500,
+  mtry = 1,
+  importance = TRUE
 )
 
-model_comparison
+pred_broad_base <- predict(rf_broad_base, newdata = test_rf)
+
+conf_broad_base <- table(
+  Prediction = pred_broad_base,
+  Truth      = test_rf$Habitat_Broad
+)
+conf_broad_base
+
+acc_broad_base <- sum(diag(conf_broad_base)) / sum(conf_broad_base)
+acc_broad_base
+
+confusionMatrix(pred_broad_base, test_rf$Habitat_Broad)
+
 ```
 
-Results of downsampled are much more accurate - which means that the majority class was hiding real habitats.
+##### Compare baseline and weighted
 
-BUT 100% accuracy is very very unlikely.... the model is surely overfitted. Too much data got thrown away for force more balance and since small habitat types are really small - all got downsampled very small! Some categories were absent or tiny in the test split
-
-The class weighted RF is starting to get better - more ecological variability helps!
+Results Baseline: Ground: very well detected (Sensitivity ≈ 0.89), but **specificity is low** (0.57), meaning many Rock/Above species are misclassified
 
 ```{r}
-table(test_RF$Habitat_Type)   # Are all habitat classes represented in test data?
-conf_weighted                 # Misclassifications? Balanced?
-conf_down                     # All diagonal? Any missing classes?
-# few classes are still missing! If some habitat types don’t appear in the test set → accuracy is inflated.
-
-
+rf_compare_broad <- data.frame(
+  Model    = c("Baseline RF (Broad)", "Weighted RF (Broad)"),
+  Accuracy = c(acc_broad_base, acc_broad)
+)
+rf_compare_broad
+#Broad habitat classes (Ground vs Rock vs Above) can be predicted with ~66–71% accuracy from morphology, reproduction, foraging mode and latitude, but even with class weighting the model remains strongly biased toward Ground habitats, and Above-ground species are still hard to distinguish.
 ```
 
-per class sensitivity
-
-```{r}
-library(caret)
-confusionMatrix(pred_weighted, test_RF$Habitat_Type)
-confusionMatrix(pred_down, test_RF$Habitat_Type)
-
-```
-
---\> Prediction improves when more ecological behavior and distribution are considered, but model evaluation must carefully account for sample imbalance across habitats.
+> 
