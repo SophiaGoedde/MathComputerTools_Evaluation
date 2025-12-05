@@ -11,7 +11,8 @@ bibliography: references.bib
 ## Data exploration
 
 ```{r cars}
-#non-relevant results were deleted
+####non-relevant results were deleted
+
 library(tidyverse) 
 library(corrplot) # For correlation plots
 library(FactoMineR) # For PCA
