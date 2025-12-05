@@ -14,11 +14,12 @@ library(corrplot)
 library(vegan) # For CCA
 library(GGally)
 library(ggplot2)
+library(ggrepel)
 
 
 setwd("~/R/Git/MathComputerTools_Evaluation")
 liz = read.csv("lizard.csv", header=T)
-liz = filter(liz, Species != "")
+liz = filter(liz, Genus != "")
 
 ```
 
@@ -47,7 +48,7 @@ liz %>%
 #data modification for exploration
 
 #remove uninterested columns
-liz.var = liz %>% select (-c(SD.Female.adult.weight..g., Sample.Size.Female.adult.weight, SD.F.SVL.adults..mm., Sample.size.Mean.F.SVL.adults, Sample.size.Clutch.Size., Source ))
+liz.var = liz %>% select (-c(SD.Female.adult.weight..g., Sample.Size.Female.adult.weight, SD.F.SVL.adults..mm., Sample.size.Mean.F.SVL.adults, Sample.size.Clutch.Size., Source, Longitude ))
 
 #remove nas, but so small shouldn't use just
 liz.var = na.omit(liz.var)
@@ -56,6 +57,7 @@ liz.var$Latitude = abs(liz.var$Latitude) #latitude to all positive
 
 #scale data
 liz.scaled <- liz.var %>% 
+  select(- c(Clutches.per.year, Clutch.Frequency)) %>%  #remove due to binary nature of data, skew
   select_if(is.numeric) %>% #Only numeric columns are selected
   mutate_all(.funs = scale)
 
@@ -72,8 +74,8 @@ liz.scaled %>% # In data_soils
   corrplot() # Then graph this matrix
 
 #correlation plot
-liz.var2 =select(liz.var, - Mode.of.reproduction )
-ggpairs(liz.var2, columns = 7:14)
+liz.var2 =select(liz.var, - c(Mode.of.reproduction, Clutches.per.year, Clutch.Frequency))
+ggpairs(liz.var2, columns = 5:11)
 
 #pca and plot
 result_pca <- PCA(liz.scaled, 
@@ -135,7 +137,7 @@ liz = liz %>%
 fam.var = liz %>%
   filter( Family %in% Fam) %>% 
   group_by(Family) %>%
-  summarise(n=n(), minLat= min(Latitude), maxLat = max(Latitude), pctActive= sum(ForageActive)/n(), pctTropic= sum(DistTropic)/n())
+  summarise(n=n(), minLat= min(Latitude), maxLat = max(Latitude), range= maxLat-minLat, pctActive= sum(ForageActive)/n(), pctTropic= sum(DistTropic)/n())
 ```
 
 
@@ -171,16 +173,17 @@ species_repartition
 result_CAsm <- CA(mlizsm, graph = T)
 fviz_eig(result_CAsm)
 
+summary(result_CAsm)
 ```
 
 ```{r}
 #run CCA
-CCAresult = cca(mlizsm ~ minLat + maxLat + pctActive + pctTropic, data = fam.var)
+CCAresult = cca(mlizsm ~ range + pctActive + pctTropic, data = fam.var)
 
 #extract data
 CCAscores = scores(CCAresult)
 CCAtable = CCAresult$CCA$u
-CCAcorr = cor(CCAtable, fam.var[, c("minLat", "maxLat", "pctActive", "pctTropic")])
+CCAcorr = cor(CCAtable, fam.var[, c("range", "pctActive", "pctTropic")])
 
 
 CCAscores_species = as.data.frame(CCAscores$species) %>% 
@@ -198,6 +201,7 @@ summary(CCAresult)
 #plot results
 plot(CCAresult)
 corrplot(CCAcorr)
+screeplot(CCAresult, bstick = TRUE, type = c("lines"))
 
 ggplot(CCAscores_sites)+
   aes(x =CCA1, y=CCA2)+

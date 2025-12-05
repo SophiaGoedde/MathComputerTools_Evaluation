@@ -670,6 +670,9 @@ summary(CCAresult)
 plot(CCAresult)
 corrplot(CCAcorr)
 
+fviz_eig(CCAresult)
+screeplot(CCAresult, bstick = TRUE, type = c("lines"))
+
 ggplot(CCAscores_sites)+
   aes(x =CCA1, y=CCA2)+
   geom_hline(linetype=2, yintercept = 0)+
@@ -684,6 +687,12 @@ ggplot(CCAscores_sites)+
   theme_bw()
   
   
+```
+
+
+```{r}
+CCAresult$CA
+
 ```
 
 
