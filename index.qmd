@@ -1,9 +1,34 @@
 ---
 title: "Understanding and predicting relationships of lizards and their preferred habitats within the context of habitat conservation and citizen science"
-format: html
+format: pdf
 editor: visual
 echo: false
 ---
+
+```{r}
+#libraries needed
+library(tidyverse) 
+library(corrplot) # For correlation plots
+library(FactoMineR) # For PCA
+library(factoextra) # For PCA plots
+library(vegan) # For CCA
+library(GGally) #for multiple scatterplots (function ggpairs)
+library(rsample) # For sampling of data (split, analysis,..)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(caret)
+library(class) # For k-NN (function knn)
+library(rsample) # For resampling (split, analysis,..)
+library(caret)
+
+library(themis) 
+library(permute)
+library(recipes)
+
+library(ggplot2)
+library(ggrepel)
+```
 
 ## Introduction
 
@@ -31,11 +56,234 @@ To analyze our questions we have access to a global database of lizard populatio
 
 ### Predicting preferred habitat
 
-To test whether morphological traits (Mean Female SVL and Latitude) can be used to predict habitat type of lizard populations, KNN and random forest models were used and compared. SVL and latitude were selected because of their easy observation in the field and having very few missing values in the data set (number of observations used: 689). Additionally, preliminary correlation checks, exploratory plots, and PCA showed these variables were not strongly correlated but also suggested weak associations between SVL, latitude, and habitat,  which already indicated a limited predictive potential (figure: coorplot, scatterplot).  Other ecological predictors were not considered due to many missing values and their higher difficulty to obtain these information in the field. The dataset was filtered to retain the key predictor variables and populations with missing values were removed. The main goal was to  find the best predictive model of a lizard's Habitat Type as a function of Mean Female SVL and Latitude. Habitat type was converted to a factor, and the data were randomly split into an 80–20 training–test set using initial_split(), stratified by habitat class.
+To test whether morphological traits (Mean Female SVL and Latitude) can be used to predict habitat type of lizard populations, KNN and random forest models were used and compared. SVL and latitude were selected because of their easy observation in the field and having very few missing values in the data set (number of observations used: 689). Additionally, preliminary correlation checks, exploratory plots, and PCA showed these variables were not strongly correlated but also suggested weak associations between SVL, latitude, and habitat, which already indicated a limited predictive potential (figure: coorplot, scatterplot). Other ecological predictors were not considered due to many missing values and their higher difficulty to obtain these information in the field. The dataset was filtered to retain the key predictor variables and populations with missing values were removed. The main goal was to find the best predictive model of a lizard's habitat Type as a function of Mean Female SVL and Latitude. Habitat type was converted to a factor, and the data were randomly split into an 80–20 training–test set using initial_split(), stratified by habitat class.
+
+```{r}
+#| label: Data exploration
+#| include: false
+# Load dataset
+lizard2 <- read.csv("lizard2.csv")
+
+# rename columns 
+names(lizard2) <- c(
+  "Species",
+  "Genus",
+  "Family",
+  "Population",
+  "Longitude",
+  "Latitude",
+  "AFWeight",              # Average Female adult weight (g)
+  "SDFAWeight",              # SD Female adult weight (g)
+  "SampleFAWeight",          # Sample Size Female adult weight
+  "MeanFSVL",                # Mean Female SVL adults (mm)
+  "SDFSVL",               # Standard deviation Female SVL adults (mm)
+  "SampleFSVL",              # Sample size Mean Female SVL adults
+  "FSVL_mature",          # Female SVL at maturity (mm)
+  "OffspringSVL",         # Offspring SVL (mm)
+  "MeanClutch",              # Mean Clutch Size
+  "SampleClutch",            # Sample size for Clutch Size
+  "ReproductionMode",        # Mode of reproduction
+  "ClutchesPerYear",         
+  "ClutchFreq",              # Clutch Frequency
+  "RCM",                     
+  "ForagingMode",           
+  "Distribution",            
+  "Habitat_Type",            
+  "Source"                   
+)
+
+# Select relevant columns & remove na
+sublizard <- lizard2 %>%
+  select(Habitat_Type, Latitude, MeanFSVL) %>%
+  drop_na()
+# From 740 to 686 observations 
+
+# summary and check dataset (especially concerning continous and categorical variables)
+summary(sublizard)
+
+#Change habitat type to numercial values (1-8)
+sublizard$Habitat_Type = as.factor(sublizard$Habitat_Type)
+
+# Random splitting of test and training data randomly (80-20%) with rsample package 
+split <- initial_split(sublizard, prop = 0.8)
+train_set <- analysis(split)
+dim(train_set); head(train_set)
+
+test_set <- assessment(split)
+dim(test_set); head(test_set)
+
+
+#####Data exploration###### not included in final report
+
+# Checking Data: Boxplot for relationship between mean female SVL and Habitat Type. Same is done for 
+boxplot(MeanFSVL ~ Habitat_Type, data = lizard2,
+        main = "SVL Mean by Habitat Type", xlab = "Habitat Type", ylab = "Mean Female SVL ")
+
+boxplot(Latitude ~ Habitat_Type, data = lizard2,
+        main = "Latitude by Habitat Type", xlab = "Habitat Type", ylab = "Latitude")
+# for a few habitat types a clear difference can be seen 
+
+#Distribution - Pairs plot with correlation
+GGally::ggpairs(sublizard, aes(color = Habitat_Type))
+
+# Visualization: SVL & Latitude -> Habitat Type
+# habitat ~ SVL
+ggplot(sublizard, aes(x = Lati, y = MeanFSVL, fill = Habitat_Type)) +
+  geom_boxplot() + theme_bw()
+# # It does not seem like SVL has an impact on habitat type - similar distributed. 
+
+# habitat ~ latitude 
+ggplot(sublizard, aes(x = Habitat_Type, y = Latitude, fill = Habitat_Type)) +
+  geom_boxplot() + theme_bw()
+
+#/need to match Kate's data name -or just remove
+#initial dataframe exploration
+# str(liz)
+# 
+# n_distinct(liz$Prefered.Habitat.Type)
+# unique(liz$Prefered.Habitat.Type)
+# 
+# unique(liz$Family)
+# n_distinct(liz$Family)
+# 
+# liz %>%
+#   group_by(Prefered.Habitat.Type) %>%
+#   summarise(n=n())
+# liz %>%
+#   group_by(Family) %>%
+#   summarise(n=n())
+
+#checking for correlation of variables (in small dataset, minmized by nas)
+#/ find duplicates with above and what want to include and dataframe setup needed for that output
+
+#balloon correlation matrix
+# liz.scaled %>% # In data_soils
+#   select_if(is.numeric) %>% # Select only numeric columns
+#   cor() %>% # Calculate the empirical correlation matrix
+#   corrplot() # Then graph this matrix
+# 
+# #correlation plot
+# liz.var2 =select(liz.var, - c(Mode.of.reproduction, Clutches.per.year, Clutch.Frequency))
+# ggpairs(liz.var2, columns = 5:11)
+# 
+# #pca and plot
+# result_pca <- PCA(liz.scaled, 
+#                scale.unit = TRUE, 
+#                graph = F)
+# fviz_eig(result_pca, choice = "variance") ####need to choose how many dimensions look at
+# result_pca$var$contrib
+# 
+# fviz_pca_var(result_pca, axes = c(1, 2), col.var="cos2") # axes 1 &2 
+# fviz_pca_var(result_pca, axes = c(1, 3), col.var="cos2") #axes 1&3
+# #with population points and by habitat type
+# fviz_pca_biplot(result_pca, axes = c(1,2), col.ind=liz.var$Prefered.Habitat.Type)
+```
+
+```{r}
+#| label: Figure 1
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-height: 3
+#| fig-width: 4
+
+#scatterplot of data
+# Plot data 
+ggplot(sublizard) +
+aes(x = MeanFSVL, y = Latitude, color = Habitat_Type) +
+geom_point() +
+labs(x='Mean SVL'
+,y='Latitude')
+#INTERPRETATION 
+#Pattern Terrestrial accumulation around -5 ; -25 and 25. 
+# Saxicolous: accumulation at -10 and 15. 
+```
 
 #### KNN
 
 KNN method was used because a newly found lizard could be classified to a specific habitat type only by the majority vote of its nearest neighbours. With potential citizen science adding constantly new data samples, the algorithm can quickly be adjusted. Habitat type was encoded as 8 factor levels (one per habitat category) and the dataset was randomly split into 80% training and 20% testing subsets. The optimal number of neighbours (k) was selected through 10-fold cross-validation using caret::train() with centering and scaling applied to the predictors and performance of the predictions was assessed using a confusion matrix. A prediction grid was created to visualize the predicted habitat type across latitude and SVL values. An uncertainty grid, displaying the frequency of neighbors not belonging to the predicted class among all the neighbors, was used to visualize the uncertainty of the predictions made.
+
+```{r}
+#| label: KNN
+#| message: false
+#| warning: false
+#| include: false
+### KNN ###########
+set.seed(123)
+
+### Cross validation for choice of k
+# Defining how many folds (10 folds means splitting dataset into 10 equal parts. The model is trained on 9 parts and tested on the remaining 1, this is repeated 10 times (every time with a different fold). 
+ctrl <- trainControl(method = "cv", verboseIter = FALSE, number = 10) 
+
+# knn fit with centering and scaling all numeric variables for distance calculations
+knnFit <- train(Habitat_Type~.,
+                data = train_set,
+                method = "knn",
+                trControl = ctrl ,
+                preProcess = c("center", "scale"),
+                tuneGrid = expand.grid(k = 1:50))
+plot(knnFit)
+# Plot shows development of accuracy according to the number of neighbours chosen (train dataset contains 10% of all data)
+
+### CV accuracy if highest for which k
+k_best <- knnFit$bestTune$k
+k_best
+#This best k value changes all the time depending on test and train data (randomly distributed)
+# Best k: 20
+
+### Now running KNN with best k fit of the train set
+best_knn <- knn(train = select(train_set,-Habitat_Type),
+                test = select(test_set,-Habitat_Type),
+                cl = train_set$Habitat_Type,
+                k = k_best,
+                prob = TRUE)
+best_confusion_matrix <- table(Predicted = best_knn,
+                               True = test_set$Habitat_Type) 
+best_confusion_matrix
+# Now the confusion matrix shows a bit better results. The habitat types Saxicolous and Aboreal were, additional to 48 correct predictions for Terrestrial, two times each correctly predicted. However, the terrestrial habitat type was 5 times falsy positive predicted compared to initial training. 
+accuracy_best <- sum(diag(best_confusion_matrix)) / sum(best_confusion_matrix)
+accuracy_best
+# 0.5652174
+
+### Plotting the results
+# Predict zone of influence for each class –> define a prediction grid
+# To know the range check data raneg of SVL and Latitude first
+range(sublizard$MeanFSVL)
+# 21.397 312.100
+range(sublizard$Latitude)
+# 0.29 51.35
+
+# Prediction grid with min and max values of predictors
+grid_prediction <- expand.grid(
+  MeanFSVL = seq(min(sublizard$MeanFSVL), max(sublizard$MeanFSVL), length.out = 200),
+  Latitude = seq(min(sublizard$Latitude), max(sublizard$Latitude), length.out = 200)
+)
+grid_prediction
+
+### Predcition grid for the chosen k (20) 
+# using all data (reunite train and test data
+predicted_Habitat <- knn(train = select(CSVLH_lizard,-Habitat_Type), 
+test = grid_prediction, 
+k = k_best, 
+cl = CSVLH_lizard$Habitat_Type, 
+prob = TRUE) 
+# Prob=TRUE for the uncertainty associated with estimation (coded as attribute of prediction vector) # This attribute now has to be extracted 
+proba_Habitat <- attr(predicted_Habitat, "prob")
+proba_Habitat
+# Final-result in table 
+final_predictions <- grid_prediction %>%
+mutate(Habitat_Type = predicted_Habitat,
+Probability = proba_Habitat)
+summary(final_predictions)
+final_predictions
+# INTERPRETATION: only the first three habitats were predicted (Terretrial 38600 times, Aboreal 903 times and Saxicolous 497 times). 
+
+# mean predictions per class 
+class(final_predictions)
+str(final_predictions)
+head(final_predictions)
+
+```
 
 #### **Random Forest**
 
@@ -43,28 +291,350 @@ To improve habitat classification with SVL and Latitude, a random forest model w
 
 To evaluate and mitigate this class imbalance problem, three strategies were implemented: A class-weighted random forest, where class weights were calculated as the inverse of habitat class frequency so rare categories received greater influence in the model. Secondly, a downsampled random forest, where the majority class (Terrestrial) was reduced to match minority class sizes, which, however, reduced the sample size too drastically. Thirdly, the minority classes were upsampled to match the terrestrial majority class.
 
+```{r}
+#| label: RF
+#| message: false
+#| warning: false
+#| include: false
+### Splitting dataset into train and test data the same way as KNN 
+# Why: To compare the results and the show the robustness of algorithm and to later compare results of accuracy with KNN. 
+train_RF_lizard <- train_set
+test_RF_lizard  <- test_set
+
+#### Choosing hyperparameters with cross-validation 
+parameters_CV_lizard <- trainControl(method = "repeatedcv",
+                          number = 10,
+                          repeats = 5)
+# For all the available methods (and the necessary arguments), please refer to help.
+rf_grid <- expand.grid(mtry = 1:2) # because 2 variables 
+
+predictor_forest <- caret::train(Habitat_Type ~., 
+                                 data = train_RF_lizard, 
+                                 method = "rf", 
+                                 metric = "Accuracy",
+                                 trControl = parameters_CV_lizard, 
+                                 tuneGrid = rf_grid,
+                                 ntree = 500)
+predictor_forest 
+# chosen mtry was 1 
+
+# Visualize cross-validation results of mtry 
+as.data.frame(predictor_forest$results) %>%
+ggplot(aes(x = mtry, y = Accuracy)) +
+geom_point()
+
+# Aggregate performance results into an object to use later 
+my_predictions <- predict(predictor_forest, newdata = select(test_RF_lizard,- Habitat_Type))
+my_predictions
+
+# Contingence table
+table(prediction = my_predictions, truth = test_RF_lizard$Habitat_Type)
+
+
+########### RF with normal/baseline dataset #################
+forest_lizard_base <- randomForest(
+  Habitat_Type ~.,
+  data = train_RF_lizard, 
+  ntree = 500,
+  maxnodes = 10,
+  mtry = 1,
+  importance = TRUE)
+
+# Predictions
+rf_pred_base <- predict(
+  forest_lizard_base,
+  newdata = select(test_RF_lizard, -Habitat_Type))
+
+# Accuracy
+acc_base <- predict(forest_lizard, newdata = select(test_RF_lizard,- Habitat_Type)) %>% 
+  table(prediction = ., truth = test_RF_lizard$Habitat_Type) %>%
+  {sum(diag(.)) / sum(.)}
+#0.6043165
+
+# Look at Confusion Matrix 
+conf_base <- table(prediction = rf_pred_base,
+                       truth = test_RF_lizard$Habitat_Type)
+conf_base
+# A few rare habitats were correctly predicted:
+# Arboreal: 6 correct & Saxicolous: 1 correct
+# This is already better than KNN, which predicted 0 for all rare habitats but still very weak. Therefore weighnted class 
+
+### Chechking variable importance 
+varImpPlot(forest_lizard)
+# Latitude more important in predicting Habitat Type than Mean SVL. 
+
+
+################ RF with weighted classes ###################
+# Loosing data from terrestrial class to match closer with rare habitats. Downside: loosing a lot of data and since small groups are VERY small this might lead to even more inaccuracy. Upsampling of rare classed could lead to over-fitting. 
+
+# Calculate class weights (inverse frequency → more weight to rare habitats)
+class_weights <- 1 / table(train_RF_lizard$Habitat_Type)
+class_weights <- class_weights / sum(class_weights)
+
+# RF with weightened classes 
+forest_lizard_weighted <- randomForest(
+  Habitat_Type ~ .,
+  data = train_RF_lizard,
+  ntree = 500,
+  mtry = 1,
+  importance = TRUE,
+  classwt = class_weights)
+
+
+# Predictions
+rf_pred_weighted <- predict(
+  forest_lizard_weighted,
+  newdata = select(test_RF_lizard, -Habitat_Type))
+
+# Accuracy 
+acc_weighted <- predict(forest_lizard_weighted, newdata = select(test_RF_lizard,- Habitat_Type)) %>%
+table(prediction = ., truth = test_RF_lizard$Habitat_Type) %>%
+  {sum(diag(.)) / sum(.)}
+acc_weighted
+# 0.5539568
+
+# Look at Confusion Matrix 
+conf_weighted <- table(prediction = rf_pred_weighted,
+                       truth = test_RF_lizard$Habitat_Type)
+conf_weighted
+# A bit better but still strong bias towards terrestrial. 
+# correctly predicts more Arboreal and Saxicolous individuals (7 and 8 true positives, respectively, vs. 6 and 1 in base prediction). 
+# but still many habitat types undetected. 
+# Aquatic, Bromelicolous, Fossorial, Psammophilus, and Semi-arboreal have zero true positives
+
+####################### RF by downsampling #######################
+# Downsample the training data by reducing terrestrial class
+train_down <- downSample(
+  x = select(train_RF_lizard, -Habitat_Type),
+  y = train_RF_lizard$Habitat_Type,
+  yname = "Habitat_Type")
+# Already not good since all classes end up with only 2 samples
+# cannot be used! 
+
+table(train_down$Habitat_Type)
+# now all have only 2 observations - very likely that this is too few! 
+# Upsampling might be a better solution with this dataset. 
+
+# RF with downsampled data 
+forest_lizard_down <- randomForest(
+  Habitat_Type ~ .,
+  data = train_down,
+  ntree = 500,
+  mtry = 1,
+  importance = TRUE
+)
+
+# Predictions on original test set
+rf_pred_down <- predict(forest_lizard_down,
+                        newdata = select(test_RF_lizard, -Habitat_Type))
+rf_pred_down
+# Confusion matrix
+conf_down <- table(prediction = rf_pred_down,
+                   truth = test_RF_lizard$Habitat_Type)
+conf_down
+# True positives: Arboreal: 6 ; Saxicolous: 3 ; Fossorial: 1 ; Semi-arboreal: 1 ; Psammophilus: 1 ; Aquatic: 3 ; Bromelicolous: 0 (still too rare)
+# But more missclassification bcs 90% of dataset (terrestrial) was removed to match the samll sampled
+# Therefore: overfitting to the downsampled minority classes.
+
+# Accuracy
+acc_down <- sum(diag(conf_down)) / sum(conf_down)
+acc_down
+# 0.1870504
+# Very low accuracy. So more rare habitats were predicted but many of them might be falsly predicted. 
+
+
+
+########################### RF by upsampling #######################
+# Upsample the training data by duplicating minority classes
+train_up <- upSample(
+  x = select(train_RF_lizard, -Habitat_Type),
+  y = train_RF_lizard$Habitat_Type,
+  yname = "Habitat_Type")
+
+table(train_up$Habitat_Type)
+# Now all have 332 observations. 
+
+# RF on upsampled data
+forest_lizard_up <- randomForest(
+  Habitat_Type ~ .,
+  data = train_up,
+  ntree = 500,
+  mtry = 1,
+  importance = TRUE)
+
+# Predictions on original test set
+rf_pred_up <- predict(forest_lizard_up,
+                      newdata = select(test_RF_lizard, -Habitat_Type))
+
+# Confusion matrix
+conf_up <- table(prediction = rf_pred_up,
+                 truth = test_RF_lizard$Habitat_Type)
+conf_up
+
+# Accuracy
+acc_up <- sum(diag(conf_up)) / sum(conf_up)
+acc_up
+# 0.5107914
+
+
+############## comparison of RF methods ############
+# Comparison of all 4 Random Forest models
+rf_comparison <- data.frame(
+  Model = c("Baseline RF", "Class-Weighted RF", "Downsampled RF", "Upsampled RF"),
+  Accuracy = c(acc_base, acc_weighted, acc_down, acc_up))
+rf_comparison
+
+# Visualize results 
+ggplot(rf_comparison, aes(x = Model, y = Accuracy, fill = Model)) +
+  geom_col() +
+  theme_minimal() +
+  coord_flip() +
+  labs(title = "Comparison of Random Forest Models",
+       y = "Accuracy",
+       x = "")
+# Baseline RF achieved highest accuracy but its because its bias towrads terrestrial class and no detection of rare classes.
+```
+
 #### Model comparison
 
 To compare the performance of KNN and RF, a final KNN model was fitted using the best k and evaluated on the same RF test set. Model performance for both methods was assessed using confusion matrices, overall accuracy, Cohen’s Kappa, and balanced accuracy to account for strong class imbalance.
 
 ```{r}
-1 + 1
-```
+#| label: Model comparison
+#| message: false
+#| warning: false
+#| include: false
+## Comparison: KNN & RF
+cm_knn_RF <- confusionMatrix(
+  data      = best_knn_RF,
+  reference = y_test_RF)
 
-You can add options to executable code like this
+cm_rf_RF <- confusionMatrix(
+  data      = rf_pred_RF,
+  reference = y_test_RF)
 
-```{r}
-#| echo: false
-2 * 2
+# get mean balanced accuracy across classes
+balacc <- function(cm) {
+  mean(cm$byClass[, "Balanced Accuracy"], na.rm = TRUE)}
+
+results_compare <- data.frame(
+  Model            = c("KNN", "Random Forest"),
+  Accuracy         = c(cm_knn_RF$overall["Accuracy"],
+                       cm_rf_RF$overall["Accuracy"]),
+  Kappa            = c(cm_knn_RF$overall["Kappa"],
+                       cm_rf_RF$overall["Kappa"]),
+  BalancedAccuracy = c(balacc(cm_knn_RF),
+                       balacc(cm_rf_RF)))
+
+results_compare
 ```
 
 ### **Habitat type and family**
 
 The dataset was transformed to an abundance matrix of preferred habitat type and families once missing values were removed and only for families that were represented by more than 20 populations (n=12, total observations used: ) (table of data). This filter was implemented so that there were enough observations to analyse relationships for the family. For each of these families, range from minimum to maximum latitude, proportion of populations with active foraging methods, and proportion located in the tropics was calculated to describe family characteristics. Other quantitative variables were difficult to summarise and still fully represent diversity within a family, thus were chosen not to be used in this analysis. Proportion of active foraging is low when a ‘sit and wait’ strategy is more common, the same is true for low proportion of tropical distribution reflecting high amounts of temperate distribution. Foraging mode is a population’s strategy that may be closely tied to their prey and thus their habitat. \<example cite?\> Latitude range was used instead of minimum and maximum latitude (or absolute latitude) as it was theorized families with a larger range would have access to more habitat types across their range, this value does not represent if the family is evenly distributed across this range. 
 
+```{r}
+#| label: CCA data set up
+#| include: false
+#data read in 
+#/ should be able to do this once for both analysis, just need to change names
+liz = read.csv("lizard.csv", header=T)
+liz = filter(liz, Genus != "")
+
+# dataframe setup for ca &cca
+aliz=liz %>%
+  group_by(Prefered.Habitat.Type, Family) %>%
+  summarise(n=n()) %>% 
+  filter(Prefered.Habitat.Type != "")
+aliz
+
+#create matrix
+mliz = aliz %>% 
+  pivot_wider(names_from = "Prefered.Habitat.Type", values_from = n) %>% 
+  replace(is.na(.), 0) 
+
+#reduce to families with >20 observations
+countFam =liz %>% 
+  group_by(Family) %>%
+  count() %>% 
+  filter(n>20)
+Fam = countFam$Family
+
+mlizsm = mliz %>% filter(Family %in% Fam)%>% 
+  column_to_rownames("Family")
+mlizsm
+
+###create dataframe of summary variables for families
+#set Active foraging to 1 and Sit&Wait to 0; set Tropical distribution to 1 and Temperate to 0 (to calculate proportion)
+liz = liz %>% 
+  mutate(ForageActive = if_else(Foraging.Mode == "Active", 1, 0)) 
+liz = liz %>% 
+  mutate(DistTropic = if_else(Distribution == "Tropical", 1, 0)) 
+
+fam.var = liz %>%
+  filter( Family %in% Fam) %>% 
+  group_by(Family) %>%
+  summarise(n=n(), minLat= min(Latitude), maxLat = max(Latitude), range= maxLat-minLat, pctActive= sum(ForageActive)/n(), pctTropic= sum(DistTropic)/n())
+
+
+
+######### exploration of data #####################
+#correlation exploration with heatmap
+aliz %>% 
+  filter( Family %in% Fam)%>%
+  ggplot() +
+  aes(x = Prefered.Habitat.Type, y = Family, fill = n) + 
+  geom_raster() + 
+  scale_fill_viridis_c() + # Change color scale
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+#| label: Table 1
+#| echo: false
+mlizsm
+#/ should add column and row totals
+```
+
 General correlations among and between habitats and families were observed using general correspondence analysis. Canonical correspondence analysis (vegan package) was run using the covariables of lizard families to explain preferred habitat types. Eigen values were used to determine the amount of inertial explained by this model and an ANOVA was used to test for the significant contribution of these covariables.
 
 ```{r}
+#| label: CCA
+#| include: false
+########### CCA #########################
+#run CCA
+CCAresult = cca(mlizsm ~ range + pctActive + pctTropic, data = fam.var)
+
+#extract data
+CCAscores = scores(CCAresult)
+CCAtable = CCAresult$CCA$u
+CCAcorr = cor(CCAtable, fam.var[, c("range", "pctActive", "pctTropic")])
+# extract data for graph
+CCAscores_species = as.data.frame(CCAscores$species) %>% 
+  rownames_to_column(var = "Habitat")
+CCAscores_sites = as.data.frame(CCAscores$sites) %>% 
+  rownames_to_column(var = "Family")
+CCAscores_var = as.data.frame(CCAscores$biplot) %>% 
+  mutate_all(function(x)x*ordiArrowMul(CCAscores$biplot)) %>%
+  rownames_to_column(var = "Covariable")
+
+#result summary
+summary(CCAresult)
+## total of 0.9529 inertia, 35% explained by constrained model variables. 
+
+#statistical test of full model
+anova(CCAresult)
+## p-value = 0.2 so not significant
+anova(CCAresult,by="margin") #test of contributions of individual variables
+##should not use this because above result is not significant
+
+################## CA #########################
+
+result_CAsm <- CA(mlizsm, graph = T)
+
+fviz_eig(result_CAsm) # support use of first 2 dimentions, since eigen values level out afterwards for further dimentions
+summary(result_CAsm)
+
 
 ```
 
@@ -74,13 +644,83 @@ General correlations among and between habitats and families were observed using
 
 The optimised model (cross-validated best k) predicted nearly all species as terrestrial, the dominant class, with only a handful of saxicolous or arboreal predictions and with no clear habitat structure present on decision surface maps (figure: a-predicted habitat type according to k-nearest neighbor, b-Hbaitat prediction uncertainty). The probability values were low (0.45-0.7) demonstrating uncertain predictions. Accuracy 0.56) appeared high because of extreme class imbalance, as all minority classes were never predicted.  This can be seen in both graphs: most of the landscape of SVL × Latitude was classified as Terrestrial (except a few patches) and uncertainty was almost always over 0.5 (mid to dark red). This may have been due to an unbalanced dataset and therefore a second phase of modeling was incorporated with a random forest model which can handle unbalanced datasets better.
 
+```{r}
+#| label: Figure 2
+#| echo: false
+#| message: false
+#| warning: false
+### Plotting KNN predictions 
+ggplot(final_predictions) +
+  aes(x = MeanFSVL, y = Latitude) +
+  geom_raster(aes(fill = Habitat_Type), alpha = 0.6) +
+  geom_point(data = sublizard, aes(color = Habitat_Type), size = 1.5) +
+  labs(
+    x = 'Mean SVL',
+    y = 'Latitude',
+    title = 'KNN-Predicted Habitat Types'
+  ) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0))
+# INTERPRETATION: The graph shows that almost all predictions are terrestrial which shows for a very unbalanced model due to an extramly unbalanced dataset and potentially too weak predictors too. 
+
+
+### Present uncertainty with predictors 
+# Uncertainty is the frequency of neighbors not belonging to the predicted class among all the neighbors.
+ggplot(final_predictions) +
+aes(x = MeanFSVL, y = Latitude) +
+geom_raster(aes(fill = 1- proba_Habitat)) + # =uncertainty
+geom_point(data = sublizard, aes(color = Habitat_Type)) +
+labs(x = "Mean Female SVL", y = "Latitude", title = "KNN-Habitat Prediction uncertainty",
+fill = "Uncertainty") +
+scale_x_continuous(expand = c(0, 0)) +
+scale_y_continuous(expand = c(0, 0)) +
+scale_fill_gradient(low = "white", high = "darkred")
+# INTERPRETATION: The classifier learned nothing about the havitat type. The uncertainry is the same almost everywhere and very high. (mostly over 0.5), which indicated a high uncertainty and therefore a bad prediction. Reasons for this stated below (Class imbalance in dataset and probably too few predictors). 
+# The model is biased towards the majority class.
+```
+
 Across the four random forest (RF) models, the baseline RF achieved the highest overall accuracy (0.60), but this performance was largely driven by its strong bias toward terrestrial habitat and almost no detection of rare classes. The introduced class weights reduced this majority-class dominance and improved minority-class sensitivity, but the trade-off was a drop in accuracy (0.55). This reflects a more balanced, but less precise classification. In contrast, the downsampled RF performed poorly (0.19) because reducing the size of the dominant class removed most of the information the model needed and caused an overfitting of the model. The upsampled RF, where rare classes were duplicated, offered an intermediate outcome (0.51). This improved the recognition of minority habitats without throwing away data, but still had a problem with a reduced reliability for the dominant class. (figure RF comparison). Checking the variable importance revealed that latitude plays a more important role in predicting Habitat Type compared to mean female SVL.
 
 Compared to the RF models, the KNN classifier performed extremely poorly since it predicted for almost every lizard a terrestrial habitat and failed to identify any rare habitat types. Model performance was broadly similar between KNN and Random Forest when evaluated on the same test set. KNN achieved the highest overall accuracy (0.64), but Random Forest produced higher Kappa values (0.33) and higher balanced accuracy (0.57) which indicates a better performance on minority habitat classes (as seen above). This suggests that while KNN predicted the dominant terrestrial habitat slightly more consistently, Random Forest captured rare habitats more effectively and made minimal more reliable predictions overall. However, both results are not really accurate and good enough to predict habitat types.
 
 ### **Habitat type and family**
 
+```{r}
+#| label: CCA results
+#| message: false
+#| warning: false
+#| include: false
+#plot CCA results
+plot(CCAresult)
+corrplot(CCAcorr)
+
+fviz_eig(CCAresult)
+screeplot(CCAresult, bstick = TRUE, type = c("lines"))
+
+ggplot(CCAscores_sites)+
+  aes(x =CCA1, y=CCA2)+
+  geom_hline(linetype=2, yintercept = 0)+
+  geom_vline(linetype=2, xintercept = 0)+
+  #geom_point(aes(color=Family))+
+  geom_point(data=CCAscores_species, color ="red")+
+  geom_text_repel(data = CCAscores_species, aes(label = Habitat), color= "red")+
+  geom_text_repel(data = CCAscores_var, aes(label = Covariable), color="black")+
+  geom_segment(data= CCAscores_var, aes(xend = CCA1, yend = CCA2), x =0, y=0, color = "black", arrow = arrow(length = unit(0.1, "cm")))+
+  geom_point(data=CCAscores_sites, color ="blue")+
+  geom_text_repel(data = CCAscores_sites, aes(label = Family), color= "blue")+
+  theme_bw()
+```
+
 When variables for lizard families of latitudinal range, percent active foragers, and percent tropically distributed were included in canonical correspondence analysis, 35% of the total inertia (0.95) was explained by these variables. Dimension 1 was weakly negatively correlated to range and dimension 2 was  highly positively correlated to range and negatively to percent tropical (figure correspondence plot?). Percent tropical and percent active are inversely related in these dimensions. However, a high p-value for this overall solution (p=0.225) demonstrates that these variables do not significantly explain the explain the relationship between lizard families and their preferred habitats, thus further testing for the significance of axes relationships are not further examined (lowest p-values for range (0.08) and percent tropical (0.10) axes indicate that these contribute the most to the poorly fit model).
+
+```{r}
+#| label: Figure X
+#| echo: false
+#| fig-height: 3
+#| fig-width: 3
+
+plot(result_CAsm)
+```
 
 Because canonical correspondence analysis was not able to explain associations well, habitat preferences and family associations are discussed using correspondence analysis results (Fig CA plot). Correspondence analysis showed that the first principle plan represents 68% of the deviations from independence (Dimension 1: 49%, Dimension 2: 19%) and low contributions from later dimensions.  Some families strongly deviate from an average distribution between preferred habitat types, this is particularly true for Xenosauridae, Dactylodae, Gekkonidae, and Tropiduridae. Other families are closer to the average profile of habitat preference.
 
