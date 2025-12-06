@@ -1,11 +1,27 @@
 ---
 title: "Understanding and predicting relationships of lizards and their preferred habitats within the context of habitat conservation and citizen science"
-format: pdf
+author:
+  - name: "Kate Faber, Sophia Gödde"
+  - name: "AgroParisTech, France" 
 editor: visual
-echo: false
+bibliography: references.bib
+format:
+  pdf:
+    code-block-bg: true
+    documentclass: article
+    classoption: 11pt
+    geometry: "margin=2.5cm"
+    header-includes:
+      - \AtBeginEnvironment{Shaded}{\footnotesize}
+      - \usepackage{setspace}
+      - \setstretch{1.05} 
+#echo: false
 ---
 
 ```{r}
+#| message: false
+#| warning: false
+#| include: false
 #libraries needed
 library(tidyverse) 
 library(corrplot) # For correlation plots
@@ -28,33 +44,37 @@ library(recipes)
 
 library(ggplot2)
 library(ggrepel)
+library(patchwork)
+library(gt)
 ```
 
-## Introduction
+## Abstract 
 
-As lizard populations face extinction pressures around the globe due to climate and land-use change (Cosendey et al, 2022, Jiang et al, 2023), habitat protection and restoration is a primary strategy for lizard conservation. Knowing which habitat types are associated with a given lizard is needed for this conservation method to be successful. 
+Lizards worldwide are threatened by habitat loss and climate change, making it important to identify which habitats species depend on and whether these preferences can be predicted from simple field measurements. Using a global dataset of 700 lizard populations, we tested whether snout–vent length (SVL) and latitude—two traits easily obtained by researchers and citizen scientists—can predict preferred habitat type with KNN and random forest models. Both algorithms performed poorly due to extreme class imbalance and the limited ecological information contained in these predictors, with most models defaulting to the dominant terrestrial class. We also examined whether habitat preference aligns with lizard families and whether family-level traits (latitudinal range, foraging mode, tropical distribution) explain these patterns. Correspondence analyses revealed some lineage–habitat associations, but family traits did not significantly predict habitat use. Overall, SVL and latitude alone are insufficient for predicting habitat type, and simple descriptors cannot fully capture ecological specialization. Improving trait coverage and balancing habitat representation will be essential for future conservation-focused habitat modelling.
 
-Lizards show a wide ecological and morphological diversity, with species occupying habitats ranging from saxicolous areas, aquatic habitats to forests and terrestrial habitats  (Pianka & Vitt 2003). Differentiation across the landscape of resource availability, predation risk, and microhabitat complexity create different habitat types that may be selected for a specie’s size and thermal constraints (Pianka & Vitt 2003).  Therefore, morphological traits representing these constraints and selection pressures are often related to specific habitat specializations (Munoz & Losos 2018). A lizard’s body size, often measured as snout–vent length (SVL), is an important trait since it influences motion, thermal regulation and buffering and microhabitat use (Munoz & Losos 2018, Meiri 2008). 
+**Keywords**: Lizard, citizen science, habitat  conservation, KNN, Random Forest, correspondence analysis
 
-Broad-scale environmental variation that influences thermal landscapes, seasonal activity, and the availability of habitat types is captured by latitude (Buckley et al. 2010). Additionally, if a converse Bergmann’s rule applies to lizards, where larger-bodied species occur in warmer regions or at lower latitudes, then body size (SVL) should show predictable geographic trends. Several studies support this expectation. Ashton et al. (2003) found that 61 of 83 species decreased in size with increasing latitude. In the Sceloporus genus, an analysis of 106 species and populations revealed that body size increases with higher maximum temperatures and greater aridity (Oufiero et al. 2011), with similar results reported in China (Liang et al. 2021).  However, other work has documented opposing trends ( Olalla-Tárraga et al. 2006). 
+## 1. Introduction
 
-Both SVL and latitude are simple field measurements to observe and could offer a practical way to predict further ecological traits, such as preferred habitat. This is particularly useful for species where detailed natural-history data are scarce or missing as it is the case in many datasets (Pincheira-Donoso et al. 2011; Lambert et al. 2012). For many incidental encounters, such as opportunistic captures, road-crossings, or photos, SVL and coordinates may be the only consistent measurements available. The practicality of minimal measurements also extends to the growing contribution of citizen science. Species-identification apps and photo platforms increasingly provide georeferenced observations, and some can estimate body size from images. If these basic descriptors can reliably predict a species’ preferred habitat, researchers could infer habitat associations even for sparsely documented taxa, anticipate where additional individuals may be found, and refine ecological niche models (Anderson 2003; Poe et al. 2017) which has the potential to inform habitat protection and species-monitoring strategies.
+As lizard populations face extinction pressures around the globe from climate and land-use change [@jiang2023; @cosendey2023], habitat protection is a primary strategy for lizard conservation. Therefore understanding which habitat types are associated with a given lizard is needed. 
 
-Conservation may be linked to a whole lizard family instead of an individual species, thus there is also a need to understand if families are related to particular habitats (ie. by conserving y habitats can you protect all species within the x family). Lizard families often show similar tendencies due to phylogenetic similarities in behaviour (such as e.g. foraging mode). Moreover, understanding which families are linked to particular habitat types, can help to anticipate which evolutionary lineages are most vulnerable to land-use and climate change when these habitat types are threatened (Buckley et al. 2010). Habitat-specific families may face a disproportionate risk if their preferred environments disappear or change, while generalist families may be more resilient.
+Lizards show a wide ecological and morphological diversity, with species occupying a wide range of habitats [@pianka2003]. Differentiation across the landscape of resource availability, predation risk, and microhabitat complexity create different selection pressures for a species’ size and thermal constraints [@pianka2003]. Therefore, morphological traits, such as a lizard’s body size, measured as snout–vent length (SVL), are often related to specific habitat specializations [@muñoz2018].  SVL influences motion, thermal regulation, and microhabitat use [@muñoz2018; @meiri2008].  
 
-In the context of habitat conservation for lizards using citizen science, and thus few variables, we asked the following questions: (Q1) Can female SVL and latitude accurately predict a lizard’s preferred habitat type? and (Q2) Do preferred habitat types correspond to lizard families?
+Broad-scale environmental variation is captured by latitude [@buckley2010]. Additionally, if a converse Bergmann’s rule applies to lizards, where larger-bodied species occur at lower latitudes, then SVL should show predictable geographic trends. Several studies support this theory demonstrating a decrease in size with increasing latitude within genuses [@ashton2003; @oufiero2011; @liang2021].  However, other work has documented opposing trends [@olalla-tarraga2006].
 
-It was hypothesised that (H1) preferred habitat can be predicted from SVL and latitude because of known trends such as the Bergmann’s rule and demonstrated morphological trait relationships to specialized habitats (Liang et al. 2021, Oufiero et al. 2011, Munoz & Losos 2018, Meiri 2008).
+Both SVL and latitude are simple field measurements to observe and could offer a practical way to predict further ecological traits. This is useful for species lacking detailed natural-history data (Pincheira-Donoso et al. 2011; Lambert et al. 2012). For many incidental encounters, SVL and coordinates may be the only consistent measurements available. The practicality of minimal measurements also extends to the growing contribution of citizen science. Photo-identification  platforms increasingly provide georeferenced observations, and some of which can estimate body size. Habitat protection and species-monitoring strategies have the potential to be informed by these basic descriptors through prediction of an individual’s preferred habitat. Thus, habitat associations even for sparsely documented taxa can be inferred and locations where additional individuals may be anticipated (Anderson 2003; Poe et al. 2017). 
 
-It was also hypothesised that (H2a) there is a correlation between habitat and lizard family. It is further predicted that (H2b) a family’s distribution, range, and predominant foraging strategy can explain their relationship with preferred habitat. \<sentence with citation to support these variables used Kate!\>
+Conservation may be linked to a whole lizard family instead of a species. Understanding which families are linked to particular habitats, can help anticipate which evolutionary lineages are most vulnerable to land-use and climate change when these habitat types are threatened (Buckley et al. 2010). Habitat-specific families may face a disproportionate risk if their preferred environments change, while generalist families may be more resilient. 
+
+In the context of lizard habitat conservation using citizen science, we asked the following questions: (1) Can female SVL and latitude accurately predict a lizard’s preferred habitat type? (2) Do preferred habitats correspond to lizard families? It was hypothesised that (H1) preferred habitat can be predicted from SVL and latitude because of known trends such as the Bergmann’s rule and demonstrated morphological trait relationships to specialized habitats (Liang et al. 2021, Oufiero et al. 2011, Munoz & Losos 2018, Meiri 2008). It was also hypothesised that (H2a)  habitats and lizard families are correlated since families often show similar tendencies due to phylogenetic similarities in behaviour and traits (O’Shea). It is further predicted that (H2b) a family’s distribution, geographic range, and predominant foraging mode can explain their relationship to preferred habitats. Foraging mode is closely tied to a populations’ diet and thus their habitat (Huey & Pianka, 1981). Range and distribution influence the habitat types available.
 
 The relationships studied in these questions provide a framework for interpreting how morphological traits (SVL), geographic constraints (latitude), and family lineages interact to determine which species may decline under future environmental change and which habitats require priority protection.
 
-## Materials and Methods
+## 2. Materials and Methods
 
 To analyze our questions we have access to a global database of lizard populations and their traits which includes quantitative data: Mean Female SVL, Mean Female body weight, Female SVL at maturity, Offspring SVL, clutch size, RCM (relative clutch mass); and qualitative data: distribution (tropical/temperate), foraging mode (active/sit and wait), preferred habitat type; additionally latitude and longitude and family and genus are included for observations of each population (Mesquita 2015). All analyses were conducted in R (Version 2025.09.1+401). 
 
-### Predicting preferred habitat
+### 2.1 Predicting preferred habitat
 
 To test whether morphological traits (Mean Female SVL and Latitude) can be used to predict habitat type of lizard populations, KNN and random forest models were used and compared. SVL and latitude were selected because of their easy observation in the field and having very few missing values in the data set (number of observations used: 689). Additionally, preliminary correlation checks, exploratory plots, and PCA showed these variables were not strongly correlated but also suggested weak associations between SVL, latitude, and habitat, which already indicated a limited predictive potential (figure: coorplot, scatterplot). Other ecological predictors were not considered due to many missing values and their higher difficulty to obtain these information in the field. The dataset was filtered to retain the key predictor variables and populations with missing values were removed. The main goal was to find the best predictive model of a lizard's habitat Type as a function of Mean Female SVL and Latitude. Habitat type was converted to a factor, and the data were randomly split into an 80–20 training–test set using initial_split(), stratified by habitat class.
 
@@ -86,11 +106,11 @@ names(lizard2) <- c(
   "ClutchesPerYear",         
   "ClutchFreq",              # Clutch Frequency
   "RCM",                     
-  "ForagingMode",           
+  "Foraging.Mode",           
   "Distribution",            
   "Habitat_Type",            
   "Source"                   
-)
+  )
 
 # Select relevant columns & remove na
 sublizard <- lizard2 %>%
@@ -128,7 +148,7 @@ GGally::ggpairs(sublizard, aes(color = Habitat_Type))
 
 # Visualization: SVL & Latitude -> Habitat Type
 # habitat ~ SVL
-ggplot(sublizard, aes(x = Lati, y = MeanFSVL, fill = Habitat_Type)) +
+ggplot(sublizard, aes(x = Latitude, y = MeanFSVL, fill = Habitat_Type)) +
   geom_boxplot() + theme_bw()
 # # It does not seem like SVL has an impact on habitat type - similar distributed. 
 
@@ -181,11 +201,11 @@ ggplot(sublizard, aes(x = Habitat_Type, y = Latitude, fill = Habitat_Type)) +
 
 ```{r}
 #| label: Figure 1
-#| echo: false
 #| message: false
 #| warning: false
 #| fig-height: 3
 #| fig-width: 4
+#| include: false
 
 #scatterplot of data
 # Plot data 
@@ -199,7 +219,7 @@ labs(x='Mean SVL'
 # Saxicolous: accumulation at -10 and 15. 
 ```
 
-#### KNN
+#### 2.1.1 KNN
 
 KNN method was used because a newly found lizard could be classified to a specific habitat type only by the majority vote of its nearest neighbours. With potential citizen science adding constantly new data samples, the algorithm can quickly be adjusted. Habitat type was encoded as 8 factor levels (one per habitat category) and the dataset was randomly split into 80% training and 20% testing subsets. The optimal number of neighbours (k) was selected through 10-fold cross-validation using caret::train() with centering and scaling applied to the predictors and performance of the predictions was assessed using a confusion matrix. A prediction grid was created to visualize the predicted habitat type across latitude and SVL values. An uncertainty grid, displaying the frequency of neighbors not belonging to the predicted class among all the neighbors, was used to visualize the uncertainty of the predictions made.
 
@@ -262,10 +282,10 @@ grid_prediction
 
 ### Predcition grid for the chosen k (20) 
 # using all data (reunite train and test data
-predicted_Habitat <- knn(train = select(CSVLH_lizard,-Habitat_Type), 
+predicted_Habitat <- knn(train = select(sublizard,-Habitat_Type), 
 test = grid_prediction, 
 k = k_best, 
-cl = CSVLH_lizard$Habitat_Type, 
+cl = sublizard$Habitat_Type, 
 prob = TRUE) 
 # Prob=TRUE for the uncertainty associated with estimation (coded as attribute of prediction vector) # This attribute now has to be extracted 
 proba_Habitat <- attr(predicted_Habitat, "prob")
@@ -285,7 +305,7 @@ head(final_predictions)
 
 ```
 
-#### **Random Forest**
+#### **2.1.2 Random Forest**
 
 To improve habitat classification with SVL and Latitude, a random forest model was applied using the same dataset and predictor variables. Random forest models are non-linear methods for supervised classification with several prediction trees. Additionally, Random forest models can simultaneously  consider qualitative and quantitative variables, which was necessary in our case and due to its easily interpretable logical classification rules. The dataset was split into 80% training and 20% testing  and parameters for pruning were fixed/set by default. Initial exploratory models using the dataset revealed that classification accuracy was strongly biased toward the dominant class (“Terrestrial”) (table of totals by habitat).  Random Forest hyperparameters were tuned using repeated 10-fold cross-validation (10 folds × 5 repeats) with a grid search over mtry = 1–2 (caret library), reflecting the two predictor variables. The optimal RF model (500 trees, mtry = 1) was then fitted to the training set. 
 
@@ -346,7 +366,7 @@ rf_pred_base <- predict(
   newdata = select(test_RF_lizard, -Habitat_Type))
 
 # Accuracy
-acc_base <- predict(forest_lizard, newdata = select(test_RF_lizard,- Habitat_Type)) %>% 
+acc_base <- predict(forest_lizard_base, newdata = select(test_RF_lizard,- Habitat_Type)) %>% 
   table(prediction = ., truth = test_RF_lizard$Habitat_Type) %>%
   {sum(diag(.)) / sum(.)}
 #0.6043165
@@ -360,7 +380,7 @@ conf_base
 # This is already better than KNN, which predicted 0 for all rare habitats but still very weak. Therefore weighnted class 
 
 ### Chechking variable importance 
-varImpPlot(forest_lizard)
+varImpPlot(forest_lizard_base)
 # Latitude more important in predicting Habitat Type than Mean SVL. 
 
 
@@ -495,41 +515,11 @@ ggplot(rf_comparison, aes(x = Model, y = Accuracy, fill = Model)) +
 # Baseline RF achieved highest accuracy but its because its bias towrads terrestrial class and no detection of rare classes.
 ```
 
-#### Model comparison
+#### 2.1.3 Model comparison
 
 To compare the performance of KNN and RF, a final KNN model was fitted using the best k and evaluated on the same RF test set. Model performance for both methods was assessed using confusion matrices, overall accuracy, Cohen’s Kappa, and balanced accuracy to account for strong class imbalance.
 
-```{r}
-#| label: Model comparison
-#| message: false
-#| warning: false
-#| include: false
-## Comparison: KNN & RF
-cm_knn_RF <- confusionMatrix(
-  data      = best_knn_RF,
-  reference = y_test_RF)
-
-cm_rf_RF <- confusionMatrix(
-  data      = rf_pred_RF,
-  reference = y_test_RF)
-
-# get mean balanced accuracy across classes
-balacc <- function(cm) {
-  mean(cm$byClass[, "Balanced Accuracy"], na.rm = TRUE)}
-
-results_compare <- data.frame(
-  Model            = c("KNN", "Random Forest"),
-  Accuracy         = c(cm_knn_RF$overall["Accuracy"],
-                       cm_rf_RF$overall["Accuracy"]),
-  Kappa            = c(cm_knn_RF$overall["Kappa"],
-                       cm_rf_RF$overall["Kappa"]),
-  BalancedAccuracy = c(balacc(cm_knn_RF),
-                       balacc(cm_rf_RF)))
-
-results_compare
-```
-
-### **Habitat type and family**
+### **2.2 Habitat type and family**
 
 The dataset was transformed to an abundance matrix of preferred habitat type and families once missing values were removed and only for families that were represented by more than 20 populations (n=12, total observations used: ) (table of data). This filter was implemented so that there were enough observations to analyse relationships for the family. For each of these families, range from minimum to maximum latitude, proportion of populations with active foraging methods, and proportion located in the tropics was calculated to describe family characteristics. Other quantitative variables were difficult to summarise and still fully represent diversity within a family, thus were chosen not to be used in this analysis. Proportion of active foraging is low when a ‘sit and wait’ strategy is more common, the same is true for low proportion of tropical distribution reflecting high amounts of temperate distribution. Foraging mode is a population’s strategy that may be closely tied to their prey and thus their habitat. \<example cite?\> Latitude range was used instead of minimum and maximum latitude (or absolute latitude) as it was theorized families with a larger range would have access to more habitat types across their range, this value does not represent if the family is evenly distributed across this range. 
 
@@ -538,23 +528,23 @@ The dataset was transformed to an abundance matrix of preferred habitat type and
 #| include: false
 #data read in 
 #/ should be able to do this once for both analysis, just need to change names
-liz = read.csv("lizard.csv", header=T)
-liz = filter(liz, Genus != "")
+#liz = read.csv("lizard.csv", header=T)
+lizard2 = filter(lizard2, Genus != "")
 
 # dataframe setup for ca &cca
-aliz=liz %>%
-  group_by(Prefered.Habitat.Type, Family) %>%
+aliz=lizard2 %>%
+  group_by(Habitat_Type, Family) %>%
   summarise(n=n()) %>% 
-  filter(Prefered.Habitat.Type != "")
+  filter(Habitat_Type != "")
 aliz
 
 #create matrix
 mliz = aliz %>% 
-  pivot_wider(names_from = "Prefered.Habitat.Type", values_from = n) %>% 
+  pivot_wider(names_from = "Habitat_Type", values_from = n) %>% 
   replace(is.na(.), 0) 
 
 #reduce to families with >20 observations
-countFam =liz %>% 
+countFam =lizard2 %>% 
   group_by(Family) %>%
   count() %>% 
   filter(n>20)
@@ -566,7 +556,7 @@ mlizsm
 
 ###create dataframe of summary variables for families
 #set Active foraging to 1 and Sit&Wait to 0; set Tropical distribution to 1 and Temperate to 0 (to calculate proportion)
-liz = liz %>% 
+liz = lizard2 %>% 
   mutate(ForageActive = if_else(Foraging.Mode == "Active", 1, 0)) 
 liz = liz %>% 
   mutate(DistTropic = if_else(Distribution == "Tropical", 1, 0)) 
@@ -583,7 +573,7 @@ fam.var = liz %>%
 aliz %>% 
   filter( Family %in% Fam)%>%
   ggplot() +
-  aes(x = Prefered.Habitat.Type, y = Family, fill = n) + 
+  aes(x = Habitat_Type, y = Family, fill = n) + 
   geom_raster() + 
   scale_fill_viridis_c() + # Change color scale
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
@@ -591,7 +581,7 @@ aliz %>%
 
 ```{r}
 #| label: Table 1
-#| echo: false
+#| include: false
 mlizsm
 #/ should add column and row totals
 ```
@@ -638,17 +628,22 @@ summary(result_CAsm)
 
 ```
 
-# Results
+# 3. Results
 
-### **Predicting preferred habitat**
+### **3.1 Predicting preferred habitat**
 
 The optimised model (cross-validated best k) predicted nearly all species as terrestrial, the dominant class, with only a handful of saxicolous or arboreal predictions and with no clear habitat structure present on decision surface maps (figure: a-predicted habitat type according to k-nearest neighbor, b-Hbaitat prediction uncertainty). The probability values were low (0.45-0.7) demonstrating uncertain predictions. Accuracy 0.56) appeared high because of extreme class imbalance, as all minority classes were never predicted.  This can be seen in both graphs: most of the landscape of SVL × Latitude was classified as Terrestrial (except a few patches) and uncertainty was almost always over 0.5 (mid to dark red). This may have been due to an unbalanced dataset and therefore a second phase of modeling was incorporated with a random forest model which can handle unbalanced datasets better.
 
+:::: columns
+::: {.column width="50%"}
 ```{r}
-#| label: Figure 2
+#| label: Figure 1
+#| fig-env: figure*
 #| echo: false
 #| message: false
 #| warning: false
+#| layout-ncol: 2
+
 ### Plotting KNN predictions 
 ggplot(final_predictions) +
   aes(x = MeanFSVL, y = Latitude) +
@@ -656,45 +651,88 @@ ggplot(final_predictions) +
   geom_point(data = sublizard, aes(color = Habitat_Type), size = 1.5) +
   labs(
     x = 'Mean SVL',
-    y = 'Latitude',
-    title = 'KNN-Predicted Habitat Types'
-  ) +
+    y = 'Latitude') +
   scale_x_continuous(expand = c(0, 0)) +
   scale_y_continuous(expand = c(0, 0))
-# INTERPRETATION: The graph shows that almost all predictions are terrestrial which shows for a very unbalanced model due to an extramly unbalanced dataset and potentially too weak predictors too. 
 
+#kknplot saved to .jpeg file 
+
+# INTERPRETATION: The graph shows that almost all predictions are terrestrial which shows for a very unbalanced model due to an extramly unbalanced dataset and potentially too weak predictors too. 
 
 ### Present uncertainty with predictors 
 # Uncertainty is the frequency of neighbors not belonging to the predicted class among all the neighbors.
 ggplot(final_predictions) +
-aes(x = MeanFSVL, y = Latitude) +
-geom_raster(aes(fill = 1- proba_Habitat)) + # =uncertainty
-geom_point(data = sublizard, aes(color = Habitat_Type)) +
-labs(x = "Mean Female SVL", y = "Latitude", title = "KNN-Habitat Prediction uncertainty",
-fill = "Uncertainty") +
-scale_x_continuous(expand = c(0, 0)) +
-scale_y_continuous(expand = c(0, 0)) +
-scale_fill_gradient(low = "white", high = "darkred")
+    aes(x = MeanFSVL, y = Latitude) +
+    geom_raster(aes(fill = 1- proba_Habitat)) + # =uncertainty
+    geom_point(data = sublizard, aes(color = Habitat_Type), show.legend = FALSE) +
+    labs(x = "Mean Female SVL", y = "Latitude",
+    fill = "Uncertainty") +
+    scale_x_continuous(expand = c(0, 0)) +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_fill_gradient(low = "white", high = "darkred")
+
 # INTERPRETATION: The classifier learned nothing about the havitat type. The uncertainry is the same almost everywhere and very high. (mostly over 0.5), which indicated a high uncertainty and therefore a bad prediction. Reasons for this stated below (Class imbalance in dataset and probably too few predictors). 
 # The model is biased towards the majority class.
+
 ```
+:::
+::::
+
+Figure 2: Predicted habitat type (left) and prediction uncertainty (right) based on KNN classification.
 
 Across the four random forest (RF) models, the baseline RF achieved the highest overall accuracy (0.60), but this performance was largely driven by its strong bias toward terrestrial habitat and almost no detection of rare classes. The introduced class weights reduced this majority-class dominance and improved minority-class sensitivity, but the trade-off was a drop in accuracy (0.55). This reflects a more balanced, but less precise classification. In contrast, the downsampled RF performed poorly (0.19) because reducing the size of the dominant class removed most of the information the model needed and caused an overfitting of the model. The upsampled RF, where rare classes were duplicated, offered an intermediate outcome (0.51). This improved the recognition of minority habitats without throwing away data, but still had a problem with a reduced reliability for the dominant class. (figure RF comparison). Checking the variable importance revealed that latitude plays a more important role in predicting Habitat Type compared to mean female SVL.
 
 Compared to the RF models, the KNN classifier performed extremely poorly since it predicted for almost every lizard a terrestrial habitat and failed to identify any rare habitat types. Model performance was broadly similar between KNN and Random Forest when evaluated on the same test set. KNN achieved the highest overall accuracy (0.64), but Random Forest produced higher Kappa values (0.33) and higher balanced accuracy (0.57) which indicates a better performance on minority habitat classes (as seen above). This suggests that while KNN predicted the dominant terrestrial habitat slightly more consistently, Random Forest captured rare habitats more effectively and made minimal more reliable predictions overall. However, both results are not really accurate and good enough to predict habitat types.
 
-### **Habitat type and family**
+```{r}
+#| label: Model comparison
+#| tbl-env: table*
+#| echo: false
+#| message: false
+#| warning: false
+#| tbl-cap: "Comparison of KNN and Random Forest performance"
+#| tbl-cap-location: top
+
+## Comparison: KNN & RF
+cm_knn_RF <- confusionMatrix(
+  data      = best_knn,
+  reference = test_set$Habitat_Type)
+
+cm_rf_RF <- confusionMatrix(
+  data      = rf_pred_base,
+  reference = test_RF_lizard$Habitat_Type)
+
+# get mean balanced accuracy across classes
+balacc <- function(cm) {
+  mean(cm$byClass[, "Balanced Accuracy"], na.rm = TRUE)}
+
+results_compare <- data.frame(
+  Model            = c("KNN", "Random Forest"),
+  Accuracy         = c(cm_knn_RF$overall["Accuracy"],
+                       cm_rf_RF$overall["Accuracy"]),
+  Kappa            = c(cm_knn_RF$overall["Kappa"],
+                       cm_rf_RF$overall["Kappa"]),
+  BalancedAccuracy = c(balacc(cm_knn_RF),
+                       balacc(cm_rf_RF)))
+
+results_compare %>%
+  mutate(across(where(is.numeric), ~ round(.x, 3))) %>%
+  gt()
+```
+
+### **3.2 Habitat type and family**
 
 ```{r}
 #| label: CCA results
 #| message: false
 #| warning: false
+#| fig-height: 3
+#| fig-width: 13
 #| include: false
 #plot CCA results
 plot(CCAresult)
 corrplot(CCAcorr)
 
-fviz_eig(CCAresult)
 screeplot(CCAresult, bstick = TRUE, type = c("lines"))
 
 ggplot(CCAscores_sites)+
@@ -714,21 +752,30 @@ ggplot(CCAscores_sites)+
 When variables for lizard families of latitudinal range, percent active foragers, and percent tropically distributed were included in canonical correspondence analysis, 35% of the total inertia (0.95) was explained by these variables. Dimension 1 was weakly negatively correlated to range and dimension 2 was  highly positively correlated to range and negatively to percent tropical (figure correspondence plot?). Percent tropical and percent active are inversely related in these dimensions. However, a high p-value for this overall solution (p=0.225) demonstrates that these variables do not significantly explain the explain the relationship between lizard families and their preferred habitats, thus further testing for the significance of axes relationships are not further examined (lowest p-values for range (0.08) and percent tropical (0.10) axes indicate that these contribute the most to the poorly fit model).
 
 ```{r}
-#| label: Figure X
+#| label: Figure 2
 #| echo: false
+#| message: false
+#| warning: false
 #| fig-height: 3
-#| fig-width: 3
+#| fig-width: 6
+#| fig-cap: "Correspondence Analysis explained dimensions"
 
-plot(result_CAsm)
+fviz_ca_biplot(result_CAsm, repel = TRUE,
+  labelsize = 3,             
+  repel.args = list(size = 2)) +
+  theme_minimal(base_size = 8) + 
+  ggtitle(NULL)
+
+
 ```
 
 Because canonical correspondence analysis was not able to explain associations well, habitat preferences and family associations are discussed using correspondence analysis results (Fig CA plot). Correspondence analysis showed that the first principle plan represents 68% of the deviations from independence (Dimension 1: 49%, Dimension 2: 19%) and low contributions from later dimensions.  Some families strongly deviate from an average distribution between preferred habitat types, this is particularly true for Xenosauridae, Dactylodae, Gekkonidae, and Tropiduridae. Other families are closer to the average profile of habitat preference.
 
 Distinctive habitats include arboreal and saxicolous. Additionally, semi-arboreal and arboreal are slightly associated, while saxicolous and psammophilus are also associated. There is also a grouping of the remaining habitats: aquatic, terrestrial, fossorial, and bromelicouls. Due to this grouping it is hard to differentiate habitat preferences for Scincidae, Teiidae, and Gynophthalimidae families between these four habitat types. We do observe a strong association of Dactyloidae and Gekkonidae with arboreal habitat preference, while Xenosauridae, Tropiduridae, and Phyllodactylidae with saxicolous or psammophilus habitats.
 
-# Discussion
+# 4. Discussion
 
-### **Predicting preferred habitat**
+### **4.1 Predicting preferred habitat**
 
 The results both from KNN and RF methods indicate that SVL and latitude are not good enough predictors of a lizards preferred habitat and the hypothesis (H1) can therefore not be supported.   This collapse occurred because KNN is highly sensitive to class imbalance. In contrast, all Random Forest variants, despite their own limitations, were able to detect at least some minority habitats. Two primary factors can explain this: A high class imbalance in the dataset and the amount of limited predictor variables used. 
 
@@ -740,7 +787,7 @@ The second limitation concerns the predictor variables used. SVL and latitude pr
 
 Because most lizards are terrestrial and therefore likely to be ecological generalists, they may be less strongly affected by climate- or land-use change. Future studies could examine whether terrestrial species actually occupy broad or highly specific niches to clarify how important this distinction is for habitat conservation.If the model could accurately predict broader environmental habitat tendencies, the literature would suggest that larger lizards (which tend to have lower surface-area–to-volume ratios and thus retain more heat) to favor open, sun-exposed habitats, while smaller lizards favor shaded habitats. (Heatwole & Taylor 2017; Angilletta et al. 2004).
 
-### **Habitat type and family**
+### **4.2 Habitat type and family**
 
 The hypothesis (H2b), that family range, distribution and foraging mode would help explain the correlations between preferred habitat type and lizard families, was not significantly supported. This was perhaps the wrong dataset to extract general family characteristics, traits, and strategies from. Since mMost trait data was given as mean values for a population, then the mean or median of these populations arewould be a poor way to characterize a family’s traits and represent the variation within the family. However, further exportation or use of indices to quantify traits would lead to a higher explanation of inertia. Better family characterizations to include may be more tied to their phenological divergence or continental distributions. 
 
@@ -756,10 +803,12 @@ These habitat preferences are also represented in the KNN output as the most dis
 
 While the variables selected were poor for explaining these relationships between families and preferred habitats, the correlations observed are generally supported by the literature, suggesting that there are other variables that could explain this relationship. Traits such as claw or leg lengths were not included in this dataset, but may be more telling of habitat preferences. Families often include many genera and even more species, so it may be preferred to examine these relationships at a finer level. This could clarify some of the messiness demonstrated by large families that show large diversity and divergences and are present in many habitat types. Afterall conservation is often done at the species level, rather than by family (however this dataset was limited in the number of species that were observed more than one or two times). Genus relationships may be a happy middle ground where traits and similarity is more common, and some predictive power is useful over just assessing species by species.
 
-# Conclusion
+# 5. Conclusion
 
 To conclude one can say that these results highlight how strongly the habitat dataset’s extreme class imbalance affects models prediction ability and that SVL and latitude alone provide very limited power for predicting a lizard's preferred habitat type. More variables than just SVL and latitude are needed to accurately predict a lizards preferred habitat that is not terrestrial. Although an annoyance for analysis, the generalist strategy of terrestrial species is likely to make them less susceptible to land-use and climate change compared to their specialized relatives. Overall some highly derived families show strong habitat preferences, but this is not represented by range, percent tropical distribution, or percent active foraging. However correspondence does match the literature, suggesting that better chosen variables can explain this relationship. Therefore, the hypothesis (H1, H2b) can not be supported whereas for H2a a link can be observed. 
 
 Our analysis shows the importance of selecting the good variables to understand and predict relationships. Good variables should be uncorrelated, evenly distributed, balanced, and representative, additionally (or more importantly) capture complex ecological interactions.  This is useful to consider when designing a study and before further field data is collected. Using additional data would allow for the ability to analyze global trends, but is constrained by the variables available. 
 
 Conservation and research of lizards and their habitats will continue to be important as populations are threatened by climate change, habitat loss, and diseases \[Jiang et al, 2023\]. There is great potential of citizen science to propel the conservation of these families and their habitats, but better variables and improved models will need to be realized to fully capture this potential. As citizen science continues to expand global biodiversity datasets, the potential for predictive habitat modelling will grow—but only if we pair these large datasets with balanced sampling, ecologically relevant variables, and models capable of representing the true complexity of lizard–ecosystem interactions.
+
+# References 
